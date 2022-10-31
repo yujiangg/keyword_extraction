@@ -6,7 +6,15 @@ import numpy as np
 from db import DBhelper
 from basic import get_date_shift, datetime_to_str, get_today
 
-
+def clean_keyword_list(keyword_list, stopwords, stopwords_usertag):
+    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
+    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_usertag)  ## remove stopwords, only for usertag
+    keyword_list = Composer_jieba().filter_quantifier(keyword_list)  ## remove number+quantifier, ex: 5.1萬
+    keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9]{2}")  ## remove 2 digit number
+    keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9.]*")  ## remove floating
+    keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[a-z]{1,4}|[A-Z]{2}")  ## remove 1-4 lowercase letter and 2 Upper
+    keyword_list = [keyword for keyword in keyword_list if keyword != ''] ## remove blank
+    return keyword_list
 
 def fetch_white_list_keywords():
     query = f"""SELECT name FROM BW_list where property=1"""
@@ -69,7 +77,7 @@ def count_unique(data_dict):
         data_dict[key] = len(set(value))
     return data_dict
 
-def update_usertag_report(web_id):
+def update_ec_usertag_report(web_id):
     expired_date_s = get_date_shift(days=-4, to_str=True, is_UTC0=False)
     df_map = fetch_usertag(web_id)
     usertag_dict, token_dict, uuid_dict = {}, {}, {}
@@ -116,11 +124,51 @@ def update_usertag_report(web_id):
     df_freq_token[['term_freq', 'token_count', 'uuid_count']] = df_freq_token[
         ['term_freq', 'token_count', 'uuid_count']].astype('int')
     # print(df_freq_token)
-    DBhelper.ExecuteUpdatebyChunk(df_freq_token, db='missioner', table='usertag_report', chunk_size=100000,
-                                     is_ssh=True)
-
-
-
+    DBhelper.ExecuteUpdatebyChunk(df_freq_token, db='missioner', table='usertag_report', chunk_size=100000,is_ssh=True)
+    return df_freq_token
+def update_ec_usertag(jieba_base,stopwords,stopwords_usertag):
+    today = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+    yesterday = datetime.datetime.utcnow() + datetime.timedelta(hours=8 - 24)
+    web_id_list, expired_date_list = fetch_usertag_ecom_webid_and_date()
+    for web_id,expired_date_int in zip(web_id_list,expired_date_list):
+        #web_id='i3fresh'
+        print(f'{web_id}\n')
+        expired_date = today + datetime.timedelta(expired_date_int)
+        df_user_record = fetch_ecom_history(web_id, today, yesterday)
+        if df_user_record.shape[0] == 0:
+            print('no available data in cdp.cdp_user_event_record')
+            continue
+        df_item_list = fetch_title_description(web_id)
+        for i in range(len(df_item_list)):
+            if df_item_list.meta_title[i] == '_':
+                df_item_list.meta_title[i] = df_item_list.title[i]
+        df_item_list = df_item_list.drop_duplicates('meta_title')
+        data = df_user_record.merge(df_item_list, on='meta_title', how='left').dropna()
+        if not data.values.tolist():
+            continue
+        token_df = fetch_token(web_id)
+        data = data.merge(token_df, on='uuid', how='left').dropna()
+        data['code'] = data['os_platform'] + data['is_fcm'].astype('int').astype('str')
+        data_usertag, i = {}, 0
+        for row in data.iterrows():
+            uuid, timetamp, meta_title,product_id ,title, description,token,_,_,code = row[-1]
+            date = datetime.datetime.fromtimestamp(int(timetamp) / 1000).strftime("%Y-%m-%d")
+            content = title + ' ' + description
+            news_clean = jieba_base.filter_str(content, pattern="https:\/\/([0-9a-zA-Z.\/]*)")
+            ## pattern for removing symbol, -,+~.
+            news_clean = jieba_base.filter_symbol(news_clean)
+            keyword_list = jieba.analyse.extract_tags(news_clean, topK=80)
+            keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_usertag)[:8]
+            keywords = ','.join(keyword_list)  ## add keywords
+            ## for table, usertag_ecom
+            for keyword in keyword_list:
+                data_usertag[i] = {'web_id': web_id,'cert_web_id':web_id ,'uuid': uuid,'code':code,'token':token,'usertag': keyword,'article_id':product_id, 'is_cut':'1','expired_date':expired_date}
+                i += 1
+        df_usertag = pd.DataFrame.from_dict(data_usertag, "index")
+        # print(df_usertag)
+        DBhelper.ExecuteUpdatebyChunk(df_usertag, db='missioner', table='usertag', chunk_size=100000, is_ssh=True)
+        update_ec_usertag_report(web_id)
+    return df_usertag
 
 if __name__ == '__main__':
     today = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
@@ -170,4 +218,4 @@ if __name__ == '__main__':
        # print(df_usertag)
         DBhelper.ExecuteUpdatebyChunk(df_usertag, db='missioner', table='usertag',chunk_size=100000, is_ssh=True)
 
-        update_usertag_report(web_id)
+        update_ec_usertag_report(web_id)

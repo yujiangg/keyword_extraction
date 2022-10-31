@@ -6,6 +6,7 @@ from jieba_based import Composer_jieba
 from keyword_usertag_report import keyword_usertag_report, delete_expired_rows
 import jieba.analyse
 import paramiko
+from ecom_usertag import update_ec_usertag
 
 
 def clean_keyword_list(keyword_list, stopwords, stopwords_usertag):
@@ -195,6 +196,13 @@ if __name__ == '__main__':
                                             stopwords_usertag,
                                             is_save=True,
                                             delete_expired_report=True)
+
+
+
+
+
+
+    update_ec_usertag(jieba_base,stopwords,stopwords_usertag)
 
 
     # connect to server
