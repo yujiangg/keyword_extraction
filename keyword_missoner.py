@@ -40,10 +40,14 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         dict_keyword_article = {}
         i = 0
         keyword_dict = {}
+        article_dict = {}
         for index, row in df_hot.iterrows():
             # ## process keyword ##
             keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner)
             params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
+            params_data = np.array(row[['web_id', 'title', 'content']])
+            params_all = np.append(params_data, params)
+            article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params)
             ## separate keyword_list to build dictionary ##
             for keyword in keyword_list:
                 ## keyword and articles mapping, for table, missoner_keyword_article
@@ -51,7 +55,7 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
                 i += 1
                 ## compute pageviews by external and internal sources, for table, missoner_keyword
                 keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut)
-            print(f"index: {index}, keywords: {keywords}")
+            print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
         date = date_int
         hour = get_hour(is_UTC0=is_UTC0)
 
@@ -65,10 +69,26 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
             data_trend[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'hour':hour, 'date':date}
             print(f'{data_save[i]}')
             i += 1
+        #####
+        data_save_article, data_trend_article = {}, {}
+        i = 0
+        for key, value in article_dict.items():
+            data_save_article[i] = {'web_id': web_id,'article_id':key,'title':value[1],'content':value[2],'pageviews': value[3], 'external_source_count': value[8],
+                            'internal_source_count': value[9], 'landings': value[4], 'exits': value[5],
+                            'bounce': value[6], 'timeOnPage': value[7], 'date': date}
+            data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date}
+            print(f'{data_trend_article[i]}')
+            i += 1
+
         ## deal with trend before replace missoner_keyword table
         df_pageviews_last = fetch_now_keywords_by_web_id(web_id, is_UTC0=False)
         df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
         df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
+        ## article
+        df_pageviews_last_article = fetch_now_article_by_web_id(web_id, is_UTC0=False)
+        df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
+        df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
+
 
         ## build DataFrame
         df_keyword = pd.DataFrame.from_dict(data_save, "index")
@@ -82,6 +102,21 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         keyword_list_dict = df_keyword.to_dict('records')
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+        ###article
+
+        df_article = pd.DataFrame.from_dict(data_save_article, "index")
+        ## merge keyword and trend
+        df_article = pd.concat([df_article.set_index('article_id'), df_trend_article.set_index('article_id')], axis=1).reset_index(level=0)
+        ## select enough number of keywords
+        pageviews_array_article = np.array(df_article['pageviews']).astype('int')
+        mean_pageviews_article = np.mean(pageviews_array_article)
+        df_article = df_article.query(f"pageviews > {mean_pageviews_article}").fillna(0)
+        ## save keyword statistics to table: missoner_keyword
+        article_list_dict = df_article.to_dict('records')
+        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
+        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+
+
 
         ## save keywords <=> articles mapping, tabel: missoner_keyword_article
         df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
@@ -127,6 +162,16 @@ def compute_trend_from_df(df_pageviews_last, df_pageviews_now):
     df_trend = pd.concat([df_trend, df_pageviews_last], axis=1).rename(columns = {'pageviews': 'pageviews_last'})
     df_trend['keyword'] = df_trend.index
     return df_trend
+def compute_trend_article_from_df(df_pageviews_last, df_pageviews_now):
+    ## make pageviews to be int32 and math operation by index:keyword
+    df_pageviews_last = df_pageviews_last[['article_id', 'pageviews']].set_index('article_id').astype({'pageviews': 'int32'})
+    df_pageviews_now = df_pageviews_now[['article_id', 'pageviews']].set_index('article_id').astype({'pageviews': 'int32'})
+    df_trend = ((df_pageviews_now - df_pageviews_last)/df_pageviews_now*100).fillna(0).rename(columns = {'pageviews': 'trend'})
+
+    df_trend = pd.concat([df_trend, df_pageviews_last], axis=1).rename(columns = {'pageviews': 'pageviews_last'})
+    df_trend['article_id'] = df_trend.index
+    return df_trend
+
 
 @timing
 def fetch_crossHot_keyword(date_int):
@@ -264,6 +309,13 @@ def fetch_now_keywords_by_web_id(web_id, is_UTC0=False):
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
+def fetch_now_article_by_web_id(web_id, is_UTC0=False):
+    date_int = date2int(get_today(is_UTC0=is_UTC0))
+    query = f"SELECT article_id, pageviews FROM missoner_article WHERE date={date_int} and web_id='{web_id}'"
+    data = MySqlHelper('dione').ExecuteSelect(query)
+    df = pd.DataFrame(data, columns=['article_id', 'pageviews'])
+    return df
+
 ## cut keyword list if keywords is empty
 def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     ## process keyword ##
@@ -300,7 +352,23 @@ def collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mappin
             ## add to external source count
             keyword_dict[keyword][:-1] += np.append(params, [row['pageviews'], 0])
     return keyword_dict
-
+def collect_article_pageviews_by_source(article_dict,row,source_domain_mapping,params_all,params):
+    ## save each keyword from a article ##
+    if row['article_id'] not in article_dict.keys():
+        ## process internal and external source loop and save to popular keyword dict
+        if row['source_domain'] in source_domain_mapping:  # internal case
+            article_dict[row['article_id']] = np.append(params_all, [0, row['pageviews']])
+        else:  # external case
+            article_dict[row['article_id']] = np.append(params_all, [row['pageviews'],0])
+    else:
+        ## process internal and external source loop and add to popular keyword dict
+        if row['source_domain'] in source_domain_mapping:  # internal case
+            ## add to internal source count
+            article_dict[row['article_id']][3:]+= np.append(params, [0, row['pageviews']])
+        else:  # external case
+            ## add to external source count
+            article_dict[row['article_id']][3:] += np.append(params, [row['pageviews'], 0])
+    return article_dict
 
 
 ## analyze data yesterday, insert two tables, missoner_keyword and missoner_keyword_article
