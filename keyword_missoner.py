@@ -170,8 +170,8 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
     keyword_crossHot_list_dict = df_keyword_crossHot.to_dict('records')
     MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_crossHot, keyword_crossHot_list_dict)
 
-    #df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
-    #DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
+    df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
+    DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
 
     return df_keyword, df_keyword_article, df_keyword_crossHot
 
@@ -269,11 +269,12 @@ def fetch_crossHot_keyword_domain(date_int):
                 k.facebook,
                 k.yahoo,
                 k.likr,
-                k.yt
-                k.LINE
-                k.feed_related
-                k.other
-                COUNT(ka.article_id) as mentionedArticles,
+                k.xuite,
+                k.yt,
+                k.LINE,
+                k.feed_related,
+                k.other,
+                COUNT(ka.article_id) as mentionedArticles
             FROM
                 (SELECT 
                     keyword,
@@ -283,6 +284,7 @@ def fetch_crossHot_keyword_domain(date_int):
                     SUM(facebook) AS facebook,
                     SUM(yahoo) AS yahoo,
                     SUM(likr) AS likr,
+                    SUM(xuite) AS xuite,
                     SUM(yt) AS yt,
                     SUM(LINE) AS LINE,
                     SUM(feed_related) AS feed_related,
@@ -302,7 +304,7 @@ def fetch_crossHot_keyword_domain(date_int):
     data = MySqlHelper('dione').ExecuteSelect(query)
     df_keyword_domain_crossHot = pd.DataFrame(data, columns=['keyword', 'pageviews', 'internal',
                                                  'google', 'facebook',
-                                                 'yahoo', 'likr', 'yt', 'LINE','feed_related','other'])
+                                                 'yahoo', 'likr','xuite' ,'yt', 'LINE','feed_related','other','mentionedArticles'])
     df_keyword_domain_crossHot['date'] = [date_int] * df_keyword_domain_crossHot.shape[0]
     return df_keyword_domain_crossHot
 ## get latest keyword data
