@@ -115,10 +115,10 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
         df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
 
-        domain_df = get_domain_df(domain_dict,'article_id')
+        domain_df = get_domain_df(domain_dict,'article_id',web_id,date_int)
         DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
                                       is_ssh=False)
-        keyword_domain_df=get_domain_df(keyword_domain_dict, 'keyword')
+        keyword_domain_df = get_domain_df(keyword_domain_dict, 'keyword',web_id,date_int)
         DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
                                       is_ssh=False)
 
@@ -170,6 +170,9 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
     keyword_crossHot_list_dict = df_keyword_crossHot.to_dict('records')
     MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_crossHot, keyword_crossHot_list_dict)
 
+    #df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
+    #DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
+
     return df_keyword, df_keyword_article, df_keyword_crossHot
 
 
@@ -203,7 +206,7 @@ def compute_trend_article_from_df(df_pageviews_last, df_pageviews_now):
     df_trend = pd.concat([df_trend, df_pageviews_last], axis=1).rename(columns = {'pageviews': 'pageviews_last'})
     df_trend['article_id'] = df_trend.index
     return df_trend
-def get_domain_df(domain_dict,_index):
+def get_domain_df(domain_dict,_index,web_id,date_int):
     domain_df = pd.DataFrame.from_dict(domain_dict, 'index')
     domain_df[_index] = domain_df.index
     domain_df['web_id'] = web_id
@@ -256,7 +259,52 @@ def fetch_crossHot_keyword(date_int):
                                                  'landings', 'exits', 'bounce', 'timeOnPage'])
     df_keyword_crossHot['date'] = [date_int] * df_keyword_crossHot.shape[0]
     return df_keyword_crossHot
-
+def fetch_crossHot_keyword_domain(date_int):
+    query = f"""
+            SELECT 
+                k.keyword,
+                k.pageviews,
+                k.internal,
+                k.google,
+                k.facebook,
+                k.yahoo,
+                k.likr,
+                k.yt
+                k.LINE
+                k.feed_related
+                k.other
+                COUNT(ka.article_id) as mentionedArticles,
+            FROM
+                (SELECT 
+                    keyword,
+                    SUM(pageviews) AS pageviews,
+                    SUM(internal) AS internal,
+                    SUM(google) AS google,
+                    SUM(facebook) AS facebook,
+                    SUM(yahoo) AS yahoo,
+                    SUM(likr) AS likr,
+                    SUM(yt) AS yt,
+                    SUM(LINE) AS LINE,
+                    SUM(feed_related) AS feed_related,
+                    SUM(other) AS other
+                FROM
+                    missoner_keyword_source_domain
+                WHERE
+                    date = {date_int}
+                GROUP BY keyword
+                ORDER BY pageviews DESC
+                LIMIT 500) AS k
+                    INNER JOIN
+                missoner_keyword_article ka ON k.keyword = ka.keyword
+            GROUP BY k.keyword
+            """
+    print(query)
+    data = MySqlHelper('dione').ExecuteSelect(query)
+    df_keyword_domain_crossHot = pd.DataFrame(data, columns=['keyword', 'pageviews', 'internal',
+                                                 'google', 'facebook',
+                                                 'yahoo', 'likr', 'yt', 'LINE','feed_related','other'])
+    df_keyword_domain_crossHot['date'] = [date_int] * df_keyword_domain_crossHot.shape[0]
+    return df_keyword_domain_crossHot
 ## get latest keyword data
 @timing
 def fetch_now_crossHot_keywords(date_int):
