@@ -6,6 +6,7 @@ import time
 from basic.decorator import timing
 from jieba_based.jieba_utils import Composer_jieba
 from db.mysqlhelper import MySqlHelper
+from db import DBhelper
 from media.Media import Media
 from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UTC0
 
