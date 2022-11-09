@@ -42,6 +42,7 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         keyword_dict = {}
         article_dict = {}
         domain_dict = {}
+        keyword_domain_dict = {}
         for index, row in df_hot.iterrows():
             # ## process keyword ##
             keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner)
@@ -68,6 +69,17 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
                 i += 1
                 ## compute pageviews by external and internal sources, for table, missoner_keyword
                 keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut)
+                if keyword not in keyword_domain_dict.keys():
+                    keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
+                                                   'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0, 'other': 0}
+                if row['source_domain'] in source_domain_mapping:
+                    keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
+                elif row['source_domain'] in keyword_domain_dict[keyword].keys():
+                    keyword_domain_dict[keyword][row['source_domain']] += int(row['pageviews'])
+                else:
+                    keyword_domain_dict[keyword]['other'] += int(row['pageviews'])
+
+
             print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
         date = date_int
         hour = get_hour(is_UTC0=is_UTC0)
@@ -102,8 +114,11 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
         df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
 
-        domain_df = get_domain_df(domain_dict)
+        domain_df = get_domain_df(domain_dict,'article_id')
         DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
+                                      is_ssh=False)
+        keyword_domain_df=get_domain_df(keyword_domain_dict, 'keyword')
+        DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
                                       is_ssh=False)
 
         ## build DataFrame
@@ -187,9 +202,9 @@ def compute_trend_article_from_df(df_pageviews_last, df_pageviews_now):
     df_trend = pd.concat([df_trend, df_pageviews_last], axis=1).rename(columns = {'pageviews': 'pageviews_last'})
     df_trend['article_id'] = df_trend.index
     return df_trend
-def get_domain_df(domain_dict):
+def get_domain_df(domain_dict,_index):
     domain_df = pd.DataFrame.from_dict(domain_dict, 'index')
-    domain_df['article_id'] = domain_df.index
+    domain_df[_index] = domain_df.index
     domain_df['web_id'] = web_id
     domain_df['date'] = date_int
     domain_df.reset_index(drop=True, inplace=True)
