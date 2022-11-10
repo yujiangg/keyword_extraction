@@ -80,6 +80,8 @@ def count_unique(data_dict):
 def update_ec_usertag_report(web_id):
     expired_date_s = get_date_shift(days=-4, to_str=True, is_UTC0=False)
     df_map = fetch_usertag(web_id)
+    if len(df_map) == 0:
+        return
     usertag_dict, token_dict, uuid_dict = {}, {}, {}
     usertags, tokens, uuids = list(df_map['usertag']), list(df_map['token']), list(df_map['uuid'])
     L = len(usertags)
