@@ -134,6 +134,11 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         keyword_list_dict = df_keyword.to_dict('records')
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+
+        df_keyword['hour'] = hour
+        keyword_list_dict = df_keyword.to_dict('records')
+        query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword_hour')
+        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
         ###article
 
         df_article = pd.DataFrame.from_dict(data_save_article, "index")
@@ -147,6 +152,12 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         article_list_dict = df_article.to_dict('records')
         query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+
+        df_article['hour'] = hour
+        article_list_dict = df_article.to_dict('records')
+        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article_hour')
+        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+
 
 
 
