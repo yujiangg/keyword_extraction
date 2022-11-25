@@ -494,6 +494,10 @@ if __name__ == '__main__':
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
 
+        del_date_int = date2int(get_today(is_UTC0=True)) - 3
+        query = f"DELETE FROM missoner_article_hour WHERE date='{del_date_int}'"
+        DBhelper('dione').ExecuteSelect(query)
+
         df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000, is_UTC0=is_UTC0)
 
         #print(f'routine to update every hour, hour: {hour_now}')
