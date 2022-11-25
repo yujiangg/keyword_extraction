@@ -3,6 +3,7 @@ import jieba.analyse
 import numpy as np
 import pandas as pd
 import time
+import datetime
 from basic.decorator import timing
 from jieba_based.jieba_utils import Composer_jieba
 from db.mysqlhelper import MySqlHelper
@@ -137,7 +138,7 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
 
         df_keyword['hour'] = hour
         temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        weekday = temp.dayofweek + 1
+        weekday = str(temp.dayofweek + 1)
         table_name = f"missoner_keyword_hour_{weekday}"
         keyword_list_dict = df_keyword.to_dict('records')
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
@@ -488,7 +489,7 @@ if __name__ == '__main__':
         ## routine
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
         temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        weekday = temp.dayofweek + 2
+        weekday = str(temp.dayofweek + 2)
         table_name = f"missoner_keyword_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
