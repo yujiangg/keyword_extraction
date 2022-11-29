@@ -159,7 +159,8 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
 
         df_article['hour'] = hour
         article_list_dict = df_article.to_dict('records')
-        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article_hour')
+        table_name = f"missoner_article_hour_{weekday}"
+        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
 
@@ -488,14 +489,14 @@ if __name__ == '__main__':
     if (hour_now == 23):
         ## routine
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
-        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        weekday = str(temp.dayofweek + 2)
+        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)+datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+        weekday = str(temp.dayofweek+1)
         table_name = f"missoner_keyword_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
 
-        del_date_int = date2int(get_today(is_UTC0=True)) - 3
-        query = f"DELETE FROM missoner_article_hour WHERE date='{del_date_int}'"
+        table_name = f"missoner_article_hour_{weekday}"
+        query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
 
         df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000, is_UTC0=is_UTC0)
