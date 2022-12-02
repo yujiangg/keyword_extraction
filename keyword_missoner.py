@@ -56,7 +56,7 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
 
             if row['article_id'] not in domain_dict.keys():
                 domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                  'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0, 'other': 0}
+                                                  'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
             if row['source_domain'] in source_domain_mapping:
                 domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
             elif row['source_domain'] in domain_dict[row['article_id']].keys():
@@ -73,7 +73,7 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
                 keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut)
                 if keyword not in keyword_domain_dict.keys():
                     keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                   'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0, 'other': 0}
+                                                   'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
                 if row['source_domain'] in source_domain_mapping:
                     keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
                 elif row['source_domain'] in keyword_domain_dict[keyword].keys():
@@ -137,6 +137,11 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
 
         df_keyword['hour'] = hour
+        if int(hour) <= 2:
+            df_keyword['pageviews_hour'] = df_keyword['pageviews']
+        else:
+            df_keyword['pageviews_hour'] = df_keyword['pageviews'] - df_keyword['pageviews_last']
+
         temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
         weekday = str(temp.dayofweek + 1)
         table_name = f"missoner_keyword_hour_{weekday}"
@@ -158,6 +163,11 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
         df_article['hour'] = hour
+        df_article['hour'] = hour
+        if int(hour) <= 2:
+            df_article['pageviews_hour'] = df_article['pageviews']
+        else:
+            df_article['pageviews_hour'] = df_article['pageviews'] - df_article['pageviews_last']
         article_list_dict = df_article.to_dict('records')
         table_name = f"missoner_article_hour_{weekday}"
         query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
