@@ -523,7 +523,7 @@ if __name__ == '__main__':
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
 
-        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000, is_UTC0=is_UTC0)
+        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=10000, is_UTC0=is_UTC0)
 
         #print(f'routine to update every hour, hour: {hour_now}')
         #yesterday = get_yesterday(is_UTC0=is_UTC0)
@@ -533,7 +533,7 @@ if __name__ == '__main__':
     else:
 
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
-        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000, is_UTC0=is_UTC0)
+        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=10000, is_UTC0=is_UTC0)
 
         print(f'routine to update every hour, hour: {hour_now}')
 
