@@ -136,14 +136,17 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
 
+        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
+        weekday = str(temp.dayofweek + 1)
+
         df_keyword['hour'] = hour
         if int(hour) <= 2:
             df_keyword['pageviews_hour'] = df_keyword['pageviews']
         else:
-            df_keyword['pageviews_hour'] = df_keyword['pageviews'] - df_keyword['pageviews_last']
+            df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date)
+            df_keyword = compute_hour_diff(df_keyword_last,df_keyword,'keyword')
 
-        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        weekday = str(temp.dayofweek + 1)
+
         table_name = f"missoner_keyword_hour_{weekday}"
         keyword_list_dict = df_keyword.to_dict('records')
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
@@ -163,11 +166,11 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
         df_article['hour'] = hour
-        df_article['hour'] = hour
         if int(hour) <= 2:
             df_article['pageviews_hour'] = df_article['pageviews']
         else:
-            df_article['pageviews_hour'] = df_article['pageviews'] - df_article['pageviews_last']
+            df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date)
+            df_article = compute_hour_diff(df_article_last,df_article,'article_id')
         article_list_dict = df_article.to_dict('records')
         table_name = f"missoner_article_hour_{weekday}"
         query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
@@ -213,7 +216,11 @@ def update_crossHot_trend_table(df_hot_keyword, hour):
     trend_list_dict = df_trend.to_dict('records')
     MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query, trend_list_dict)
     return df_trend
-
+def compute_hour_diff(df_article_last,df_article,name):
+    diff = df_article[[name, 'pageviews']].set_index(name).astype({'pageviews': 'int32'}) - df_article_last.set_index(name).astype({'pageviews': 'int32'})
+    diff = diff.fillna(0).astype(int).reset_index().rename({'pageviews':'pageviews_hour'},axis='columns')
+    df_article = pd.merge(df_article, diff, on=name, how='left')
+    return df_article
 def compute_trend_from_df(df_pageviews_last, df_pageviews_now):
     ## make pageviews to be int32 and math operation by index:keyword
     df_pageviews_last = df_pageviews_last[['keyword', 'pageviews']].set_index('keyword').astype({'pageviews': 'int32'})
@@ -434,6 +441,13 @@ def fetch_now_article_by_web_id(web_id, is_UTC0=False):
     df = pd.DataFrame(data, columns=['article_id', 'pageviews'])
     return df
 
+def fetch_last_hour_article(web_id,hour,aok,col,week,date):
+    hour =hour - 1
+    query = f"SELECT {col}, pageviews FROM missoner_{aok}_hour_{week} WHERE hour='{hour}' and web_id='{web_id}' and date='{date}'"
+    data = MySqlHelper('dione').ExecuteSelect(query)
+    df = pd.DataFrame(data, columns=[col, 'pageviews'])
+    return df
+
 ## cut keyword list if keywords is empty
 def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     ## process keyword ##
@@ -496,7 +510,7 @@ if __name__ == '__main__':
     # date = '2021-12-05' ## None: assign today
     is_UTC0 = check_is_UTC0()
     hour_now = get_hour(is_UTC0=is_UTC0)
-    if (hour_now == 23):
+    if (hour_now == 22):
         ## routine
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
         temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)+datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
