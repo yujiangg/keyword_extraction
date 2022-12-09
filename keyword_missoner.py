@@ -14,7 +14,7 @@ from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UT
 
 ## main, process one day if assign date, default is today
 @timing
-def update_missoner_three_tables(date=None,n=5000,weekday,is_UTC0=False):
+def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
     if (date == None):
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
@@ -524,7 +524,7 @@ if __name__ == '__main__':
         DBhelper('dione').ExecuteSelect(query)
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
 
-    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000,weekday=weekday,is_UTC0=is_UTC0)
+    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(weekday=weekday,date=date, n=5000,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
