@@ -14,7 +14,7 @@ from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UT
 
 ## main, process one day if assign date, default is today
 @timing
-def update_missoner_three_tables(date=None,n=5000,weekday = weekday,is_UTC0=False):
+def update_missoner_three_tables(date=None,n=5000,weekday,is_UTC0=False):
     if (date == None):
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
