@@ -14,7 +14,7 @@ from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UT
 
 ## main, process one day if assign date, default is today
 @timing
-def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
+def update_missoner_three_tables(date=None,n=5000,weekday = weekday,is_UTC0=False):
     if (date == None):
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
@@ -136,8 +136,8 @@ def update_missoner_three_tables(date=None, is_UTC0=False, n=10000):
         query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
 
-        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        weekday = str(temp.dayofweek + 1)
+        # temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
+        # weekday = str(temp.dayofweek + 1)
 
         df_keyword['hour'] = hour
         if int(hour) <= 2:
@@ -510,11 +510,11 @@ if __name__ == '__main__':
     # date = '2021-12-05' ## None: assign today
     is_UTC0 = check_is_UTC0()
     hour_now = get_hour(is_UTC0=is_UTC0)
-    if (hour_now == 22):
+    temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
+    weekday = str(temp.dayofweek + 1)
+    if (hour_now == 0):
         ## routine
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
-        temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)+datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
-        weekday = str(temp.dayofweek+1)
         table_name = f"missoner_keyword_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
@@ -522,20 +522,11 @@ if __name__ == '__main__':
         table_name = f"missoner_article_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
-
-        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=10000, is_UTC0=is_UTC0)
-
-        #print(f'routine to update every hour, hour: {hour_now}')
-        #yesterday = get_yesterday(is_UTC0=is_UTC0)
-        ## cal at 3:30 to confirm data is complete
-        #df_keyword_y, df_keyword_article_y, df_keyword_crossHot_y = update_missoner_three_tables(date=yesterday, n=50000, is_UTC0=is_UTC0)
-        print(f"in 3:00 (UTC+8), update yesterday all browse record")
-    else:
-
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
-        df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=10000, is_UTC0=is_UTC0)
 
-        print(f'routine to update every hour, hour: {hour_now}')
+    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(date=date, n=5000,weekday=weekday,is_UTC0=is_UTC0)
+
+    print(f'routine to update every hour, hour: {hour_now}')
 
     t_end = time.time()
     t_spent = t_end - t_start
