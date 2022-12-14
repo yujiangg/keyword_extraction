@@ -452,7 +452,8 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
 def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     ## process keyword ##
     keywords = row['keywords']
-    news = row['title'] + ' ' + row['content']
+    #news = row['title'] + ' ' + row['content']
+    news = row['title']
     news_clean = jieba_base.filter_str(news, pattern="https:\/\/([0-9a-zA-Z.\/]*)")  ## pattern for https
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_'):
