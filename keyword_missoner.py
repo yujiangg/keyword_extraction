@@ -14,7 +14,7 @@ from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UT
 
 ## main, process one day if assign date, default is today
 @timing
-def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
+def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     if (date == None):
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
@@ -83,8 +83,8 @@ def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
 
 
             print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
-        date = date_int
-        hour = get_hour(is_UTC0=is_UTC0)
+        #date = date_int
+        #hour = get_hour(is_UTC0=is_UTC0)
 
         ## build dict for building DataFrame
         data_save, data_trend = {}, {}
@@ -92,8 +92,8 @@ def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
         for key, value in keyword_dict.items():
             data_save[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'external_source_count': value[5],
                             'internal_source_count': value[6], 'landings': value[1], 'exits': value[2],
-                            'bounce': value[3], 'timeOnPage': value[4], 'is_cut': value[7], 'date': date}
-            data_trend[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'hour':hour, 'date':date}
+                            'bounce': value[3], 'timeOnPage': value[4], 'is_cut': value[7], 'date': date_int}
+            data_trend[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'hour':hour, 'date':date_int}
             print(f'{data_save[i]}')
             i += 1
         #####
@@ -102,8 +102,8 @@ def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
         for key, value in article_dict.items():
             data_save_article[i] = {'web_id': web_id,'article_id':key,'title':value[1],'content':value[2],'pageviews': value[3], 'external_source_count': value[8],
                             'internal_source_count': value[9], 'landings': value[4], 'exits': value[5],
-                            'bounce': value[6], 'timeOnPage': value[7], 'date': date}
-            data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date}
+                            'bounce': value[6], 'timeOnPage': value[7], 'date': date_int}
+            data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date_int}
             print(f'{data_trend_article[i]}')
             i += 1
 
@@ -143,7 +143,7 @@ def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
         if int(hour) <= 2:
             df_keyword['pageviews_hour'] = df_keyword['pageviews']
         else:
-            df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date)
+            df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
             df_keyword = compute_hour_diff(df_keyword_last,df_keyword,'keyword')
 
 
@@ -169,7 +169,7 @@ def update_missoner_three_tables(weekday,date=None,n=5000,is_UTC0=False):
         if int(hour) <= 2:
             df_article['pageviews_hour'] = df_article['pageviews']
         else:
-            df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date)
+            df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
             df_article = compute_hour_diff(df_article_last,df_article,'article_id')
         article_list_dict = df_article.to_dict('records')
         table_name = f"missoner_article_hour_{weekday}"
@@ -507,9 +507,9 @@ def collect_article_pageviews_by_source(article_dict,row,source_domain_mapping,p
 ## analyze data yesterday, insert two tables, missoner_keyword and missoner_keyword_article
 if __name__ == '__main__':
     t_start = time.time()
-    date = None
-    # date = '2021-12-05' ## None: assign today
     is_UTC0 = check_is_UTC0()
+    date = get_today(is_UTC0=is_UTC0)
+    # date = '2021-12-05' ## None: assign today
     hour_now = get_hour(is_UTC0=is_UTC0)
     temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
     weekday = str(temp.dayofweek + 1)
@@ -525,7 +525,7 @@ if __name__ == '__main__':
         DBhelper('dione').ExecuteSelect(query)
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
 
-    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(weekday=weekday,date=date, n=5000,is_UTC0=is_UTC0)
+    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
