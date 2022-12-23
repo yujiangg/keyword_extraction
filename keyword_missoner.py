@@ -104,19 +104,16 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
                                                     columns=['web_id', 'title', 'content', 'pageviews', 'landings',
                                                              'exits', 'bounce', 'timeOnPage'])
             source_data_df = source_data_df.reset_index().rename(columns={'index': 'article_id'})
-            source_data_df['date'] = dateint
+            source_data_df['date'] = date_int
             DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
                                           is_ssh=False)
         for name, source_data in source_dict_keyword.items():
             db_source_article_name = f'missoner_keyword_{name}'
-            source_data_df = pd.DataFrame.from_dict(source_data, 'index',
-                                                    columns=['web_id', 'title', 'content', 'pageviews', 'landings',
-                                                             'exits', 'bounce', 'timeOnPage'])
-            source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'}).drop(
-                ['title', 'content'], axis=1)
-            source_data_df['date'] = dateint
-            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
-                                          is_ssh=False)
+            source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
+            source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
+            source_data_df['date'] = date_int
+            source_data_df['web_id'] = web_id
+            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
         ## build dict for building DataFrame
         data_save, data_trend = {}, {}
         i = 0
@@ -246,9 +243,9 @@ def collect_source_article_pageviews_by_source(article_dict,row,params_all,param
 def collect_source_keyword_pageviews_by_source(article_dict,row,params_all,params,keyword):
     ## save each keyword from a article ##
     if keyword not in article_dict.keys():
-        article_dict[keyword] = params_all
+        article_dict[keyword] = params
     else:
-        article_dict[keyword][3:] += params
+        article_dict[keyword] += params
     return article_dict
 def update_crossHot_trend_table(df_hot_keyword, hour):
     hot_keyword_list_dict = df_hot_keyword.to_dict('records')
