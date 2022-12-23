@@ -7,6 +7,7 @@ from basic import timing
 from opencc import OpenCC
 from db import DBhelper
 from definitions import ROOT_DIR
+import pickle
 ## jieba.analyse.set_stop_words, 可使extract keyword阻擋這些字（cut, 切字無法）
 ## jieba.set_dictionary, jieba.load_userdict, 可同時影響cut and extract_tag
 
@@ -29,7 +30,9 @@ class Composer_jieba:
         self._load_kw_config(filename_stopwords, filename_idf)
         ## add file of add_word.txt
         self.add_words()
-        all_hashtag = self.fetch_all_hashtags()
+        #all_hashtag = self.fetch_all_hashtags()
+        with open(f'{ROOT_DIR}/jieba_based/all_hashtag.pickle', 'rb') as f:
+            all_hashtag = pickle.load(f)
         gtrend_keywords = self.fetch_gtrend_keywords()
         ## add all hashtags and google trend keywords to the dictionary
         self.add_words(all_hashtag)

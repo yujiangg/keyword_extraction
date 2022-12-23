@@ -21,12 +21,18 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
         date_int = date2int(date)
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
-    all_hashtag = jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
+    jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
+
+
+    white_list = fetch_white_list_keywords()
+    jieba_base.add_words(white_list)
+
     stopwords = jieba_base.get_stopword_list()
-    stopwords_missoner = jieba_base.read_file('./jieba_based/stop_words_missoner.txt')
+    stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
     media = Media()
     web_id_all = fetch_missoner_web_id()
+    source_list = ['google', 'likr','facebook','xuite','yahoo']
     # web_id_all = ['ctnews']
     df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
     if df_keyword_crossHot_last.shape[0]==0:
@@ -45,15 +51,16 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
         article_dict = {}
         domain_dict = {}
         keyword_domain_dict = {}
+        source_dict_article = {sr: {} for sr in source_list}
+        source_dict_keyword = {sr: {} for sr in source_list}
         for index, row in df_hot.iterrows():
             # ## process keyword ##
-            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner)
+            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_usertag)
             params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
             params_data = np.array(row[['web_id', 'title', 'content']])
             params_all = np.append(params_data, params)
             article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params)
             ## separate keyword_list to build dictionary ##
-
             if row['article_id'] not in domain_dict.keys():
                 domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
                                                   'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
@@ -81,11 +88,35 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
                 else:
                     keyword_domain_dict[keyword]['other'] += int(row['pageviews'])
 
-
+            if row['source_domain'] in source_list:
+                # print(row['source_domain'])
+                source_dict_article[row['source_domain']] = collect_source_article_pageviews_by_source(source_dict_article[row['source_domain']], row, params_all, params)
+                for keyword in keyword_list:
+                    ## keyword and articles mapping, for table, missoner_keyword_article
+                    ## compute pageviews by external and internal sources, for table, missoner_keyword
+                    source_dict_keyword[row['source_domain']] = collect_source_keyword_pageviews_by_source(source_dict_keyword[row['source_domain']], row, params_all, params, keyword)
             print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
         #date = date_int
         #hour = get_hour(is_UTC0=is_UTC0)
-
+        for name, source_data in source_dict_article.items():
+            db_source_article_name = f'missoner_article_{name}'
+            source_data_df = pd.DataFrame.from_dict(source_data, 'index',
+                                                    columns=['web_id', 'title', 'content', 'pageviews', 'landings',
+                                                             'exits', 'bounce', 'timeOnPage'])
+            source_data_df = source_data_df.reset_index().rename(columns={'index': 'article_id'})
+            source_data_df['date'] = dateint
+            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
+                                          is_ssh=False)
+        for name, source_data in source_dict_keyword.items():
+            db_source_article_name = f'missoner_keyword_{name}'
+            source_data_df = pd.DataFrame.from_dict(source_data, 'index',
+                                                    columns=['web_id', 'title', 'content', 'pageviews', 'landings',
+                                                             'exits', 'bounce', 'timeOnPage'])
+            source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'}).drop(
+                ['title', 'content'], axis=1)
+            source_data_df['date'] = dateint
+            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
+                                          is_ssh=False)
         ## build dict for building DataFrame
         data_save, data_trend = {}, {}
         i = 0
@@ -204,7 +235,21 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
 
     return df_keyword, df_keyword_article, df_keyword_crossHot
 
+def collect_source_article_pageviews_by_source(article_dict,row,params_all,params):
+    ## save each keyword from a article ##
+    if row['article_id'] not in article_dict.keys():
+        article_dict[row['article_id']] = params_all
+    else:
+        article_dict[row['article_id']][3:] += params
+    return article_dict
 
+def collect_source_keyword_pageviews_by_source(article_dict,row,params_all,params,keyword):
+    ## save each keyword from a article ##
+    if keyword not in article_dict.keys():
+        article_dict[keyword] = params_all
+    else:
+        article_dict[keyword][3:] += params
+    return article_dict
 def update_crossHot_trend_table(df_hot_keyword, hour):
     hot_keyword_list_dict = df_hot_keyword.to_dict('records')
     data_trend = {}
@@ -250,6 +295,12 @@ def get_domain_df(domain_dict,_index,web_id,date_int):
     mean = sum(pageviews) // len(domain_df)
     domain_df = domain_df[domain_df['pageviews'] > mean]
     return domain_df
+def fetch_white_list_keywords():
+    query = f"""SELECT name FROM BW_list where property=1"""
+    print(query)
+    data = DBhelper('missioner', is_ssh=True).ExecuteSelect(query)
+    white_list = [d[0] for d in data]
+    return white_list
 
 @timing
 def fetch_crossHot_keyword(date_int):
