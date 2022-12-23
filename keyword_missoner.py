@@ -24,8 +24,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
 
 
-    white_list = fetch_white_list_keywords()
-    jieba_base.add_words(white_list)
+    # white_list = fetch_white_list_keywords()
+    # jieba_base.add_words(white_list)
 
     stopwords = jieba_base.get_stopword_list()
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
