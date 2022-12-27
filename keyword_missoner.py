@@ -10,8 +10,7 @@ from db.mysqlhelper import MySqlHelper
 from db import DBhelper
 from media.Media import Media
 from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UTC0
-
-
+from slackwarningletter import slack_warning
 ## main, process one day if assign date, default is today
 @timing
 def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
@@ -582,3 +581,4 @@ if __name__ == '__main__':
     t_end = time.time()
     t_spent = t_end - t_start
     print(f'finish all routine spent: {t_spent}s')
+    slack_warning().send_letter(f'流量小編{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
