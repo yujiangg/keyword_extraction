@@ -40,6 +40,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     for web_id in web_id_all:
         ## fetch source domain mapping
         source_domain_mapping = fetch_source_domain_mapping(web_id)
+        source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
         ## fetch user_based popular article
         df_hot = media.fetch_hot_articles(web_id, n, date=date, is_UTC0=is_UTC0)
         if df_hot.size == 0:
@@ -59,15 +60,16 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
             params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
             params_data = np.array(row[['web_id', 'title', 'content']])
             params_all = np.append(params_data, params)
-            article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params)
+            dm = row['source_domain'].lower()
+            article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)
             ## separate keyword_list to build dictionary ##
             if row['article_id'] not in domain_dict.keys():
                 domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                  'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
-            if row['source_domain'] in source_domain_mapping:
+                                                  'xuite': 0, 'yt': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
+            if dm in source_domain_mapping:
                 domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
-            elif row['source_domain'] in domain_dict[row['article_id']].keys():
-                domain_dict[row['article_id']][row['source_domain']] += int(row['pageviews'])
+            elif dm in domain_dict[row['article_id']].keys():
+                domain_dict[row['article_id']][dm] += int(row['pageviews'])
             else:
                 domain_dict[row['article_id']]['other'] += int(row['pageviews'])
 
@@ -77,24 +79,24 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
                 dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut}
                 i += 1
                 ## compute pageviews by external and internal sources, for table, missoner_keyword
-                keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut)
+                keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm)
                 if keyword not in keyword_domain_dict.keys():
                     keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                   'xuite': 0, 'yt': 0, 'LINE': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
-                if row['source_domain'] in source_domain_mapping:
+                                                   'xuite': 0, 'yt': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
+                if dm in source_domain_mapping:
                     keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
-                elif row['source_domain'] in keyword_domain_dict[keyword].keys():
-                    keyword_domain_dict[keyword][row['source_domain']] += int(row['pageviews'])
+                elif dm in keyword_domain_dict[keyword].keys():
+                    keyword_domain_dict[keyword][dm] += int(row['pageviews'])
                 else:
                     keyword_domain_dict[keyword]['other'] += int(row['pageviews'])
 
-            if row['source_domain'] in source_list:
+            if dm in source_list:
                 # print(row['source_domain'])
-                source_dict_article[row['source_domain']] = collect_source_article_pageviews_by_source(source_dict_article[row['source_domain']], row, params_all, params)
+                source_dict_article[dm] = collect_source_article_pageviews_by_source(source_dict_article[dm], row, params_all, params)
                 for keyword in keyword_list:
                     ## keyword and articles mapping, for table, missoner_keyword_article
                     ## compute pageviews by external and internal sources, for table, missoner_keyword
-                    source_dict_keyword[row['source_domain']] = collect_source_keyword_pageviews_by_source(source_dict_keyword[row['source_domain']], row, params_all, params, keyword)
+                    source_dict_keyword[dm] = collect_source_keyword_pageviews_by_source(source_dict_keyword[dm], row, params_all, params, keyword)
             print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
         #date = date_int
         #hour = get_hour(is_UTC0=is_UTC0)
@@ -235,7 +237,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
 def collect_source_article_pageviews_by_source(article_dict,row,params_all,params):
     ## save each keyword from a article ##
     if row['article_id'] not in article_dict.keys():
-        article_dict[row['article_id']] = params_all
+        article_dict[row['article_id']] = params_all.copy()
     else:
         article_dict[row['article_id']][3:] += params
     return article_dict
@@ -243,7 +245,7 @@ def collect_source_article_pageviews_by_source(article_dict,row,params_all,param
 def collect_source_keyword_pageviews_by_source(article_dict,row,params_all,params,keyword):
     ## save each keyword from a article ##
     if keyword not in article_dict.keys():
-        article_dict[keyword] = params
+        article_dict[keyword] = params.copy()
     else:
         article_dict[keyword] += params
     return article_dict
@@ -289,8 +291,8 @@ def get_domain_df(domain_dict,_index,web_id,date_int):
     domain_df.reset_index(drop=True, inplace=True)
     pageviews = domain_df.iloc[:, :-3].apply(np.sum, axis=1)
     domain_df['pageviews'] = pageviews
-    mean = sum(pageviews) // len(domain_df)
-    domain_df = domain_df[domain_df['pageviews'] > mean]
+    # mean = sum(pageviews) // len(domain_df)
+    # domain_df = domain_df[domain_df['pageviews'] > mean]
     return domain_df
 def fetch_white_list_keywords():
     query = f"""SELECT name FROM BW_list where property=1"""
@@ -516,34 +518,34 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     return keywords, keyword_list, is_cut
 
 ## compute pageviews by external and internal sources
-def collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut):
+def collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm):
     ## save each keyword from a article ##
     if keyword not in keyword_dict.keys():
         ## process internal and external source loop and save to popular keyword dict
-        if row['source_domain'] in source_domain_mapping:  # internal case
+        if dm in source_domain_mapping:  # internal case
             keyword_dict[keyword] = np.append(params, [0, row['pageviews'], is_cut])
         else:  # external case
             keyword_dict[keyword] = np.append(params, [row['pageviews'], 0, is_cut])
     else:
         ## process internal and external source loop and add to popular keyword dict
-        if row['source_domain'] in source_domain_mapping:  # internal case
+        if dm in source_domain_mapping:  # internal case
             ## add to internal source count
             keyword_dict[keyword][:-1] += np.append(params, [0, row['pageviews']])
         else:  # external case
             ## add to external source count
             keyword_dict[keyword][:-1] += np.append(params, [row['pageviews'], 0])
     return keyword_dict
-def collect_article_pageviews_by_source(article_dict,row,source_domain_mapping,params_all,params):
+def collect_article_pageviews_by_source(article_dict,row,source_domain_mapping,params_all,params,dm):
     ## save each keyword from a article ##
     if row['article_id'] not in article_dict.keys():
         ## process internal and external source loop and save to popular keyword dict
-        if row['source_domain'] in source_domain_mapping:  # internal case
+        if dm in source_domain_mapping:  # internal case
             article_dict[row['article_id']] = np.append(params_all, [0, row['pageviews']])
         else:  # external case
             article_dict[row['article_id']] = np.append(params_all, [row['pageviews'],0])
     else:
         ## process internal and external source loop and add to popular keyword dict
-        if row['source_domain'] in source_domain_mapping:  # internal case
+        if dm in source_domain_mapping:  # internal case
             ## add to internal source count
             article_dict[row['article_id']][3:]+= np.append(params, [0, row['pageviews']])
         else:  # external case
