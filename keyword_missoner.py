@@ -174,7 +174,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
         else:
             df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
             df_keyword = compute_hour_diff(df_keyword_last,df_keyword,'keyword')
-
+        try:
+            df_keyword['pageviews_hour'] = df_keyword.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
+        except:
+            pass
 
         table_name = f"missoner_keyword_hour_{weekday}"
         keyword_list_dict = df_keyword.to_dict('records')
@@ -200,6 +203,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
         else:
             df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
             df_article = compute_hour_diff(df_article_last,df_article,'article_id')
+        try:
+            df_article['pageviews_hour'] = df_article.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
+        except:
+            pass
+
         article_list_dict = df_article.to_dict('records')
         table_name = f"missoner_article_hour_{weekday}"
         query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
