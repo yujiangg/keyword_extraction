@@ -22,7 +22,6 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
 
-
     # white_list = fetch_white_list_keywords()
     # jieba_base.add_words(white_list)
 
@@ -33,9 +32,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     web_id_all = fetch_missoner_web_id()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','yt']
     # web_id_all = ['ctnews']
-    df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
-    if df_keyword_crossHot_last.shape[0]==0:
-        df_keyword_crossHot_last = fetch_crossHot_keyword(date_int) ## if size is 0, directly fetch from keyword_missoner
+    # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
+    #  if df_keyword_crossHot_last.shape[0]==0:
+    #      df_keyword_crossHot_last = fetch_crossHot_keyword(date_int) ## if size is 0, directly fetch from keyword_missoner
     for web_id in web_id_all:
         ## fetch source domain mapping
         source_domain_mapping = fetch_source_domain_mapping(web_id)
@@ -225,21 +224,20 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     # ## save cross hot keywords, tabel: missoner_keyword_crossHot (compute after all web_id ran) (without trend)
     ## deal with trend before replace missoner_keyword_crossHot table
     # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int) ## take keyword in missoner_keyword_crossHot
-    df_keyword_crossHot_now = fetch_crossHot_keyword(date_int) ## only take top100 keywords from missoner_keyword
-    df_trend_crossHot = compute_trend_from_df(df_keyword_crossHot_last, df_keyword_crossHot_now)
-    ## merge keyword and trend
-    df_keyword_crossHot = pd.concat([df_keyword_crossHot_now.set_index('keyword'), df_trend_crossHot.set_index('keyword')], axis=1)
-    ## recover column keyword and remove nan
-    df_keyword_crossHot = df_keyword_crossHot.reset_index(level=0).dropna()
+    # df_keyword_crossHot_now = fetch_crossHot_keyword(date_int) ## only take top100 keywords from missoner_keyword
+    # df_trend_crossHot = compute_trend_from_df(df_keyword_crossHot_last, df_keyword_crossHot_now)
+    # ## merge keyword and trend
+    # df_keyword_crossHot = pd.concat([df_keyword_crossHot_now.set_index('keyword'), df_trend_crossHot.set_index('keyword')], axis=1)
+    # ## recover column keyword and remove nan
+    # df_keyword_crossHot = df_keyword_crossHot.reset_index(level=0).dropna()
 
-    query_crossHot = MySqlHelper.generate_update_SQLquery(df_keyword_crossHot, 'missoner_keyword_crossHot')
-    keyword_crossHot_list_dict = df_keyword_crossHot.to_dict('records')
-    MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_crossHot, keyword_crossHot_list_dict)
-
-    df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
-    DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
-
-    return df_keyword, df_keyword_article, df_keyword_crossHot
+    # query_crossHot = MySqlHelper.generate_update_SQLquery(df_keyword_crossHot, 'missoner_keyword_crossHot')
+    # keyword_crossHot_list_dict = df_keyword_crossHot.to_dict('records')
+    # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_crossHot, keyword_crossHot_list_dict)
+    #
+    # df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
+    # DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
+    return
 
 def collect_source_article_pageviews_by_source(article_dict,row,params_all,params):
     ## save each keyword from a article ##
@@ -582,7 +580,7 @@ if __name__ == '__main__':
         DBhelper('dione').ExecuteSelect(query)
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
 
-    df_keyword, df_keyword_article, df_keyword_crossHot = update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,is_UTC0=is_UTC0)
+    update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
