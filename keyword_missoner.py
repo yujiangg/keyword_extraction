@@ -19,6 +19,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
         date_int = date2int(date)
+    web_id_all = fetch_missoner_web_id(group)
+    print(web_id_all)
+    return
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
@@ -30,9 +33,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
     media = Media()
-    web_id_all = fetch_missoner_web_id(group)
-    print(web_id_all)
-    return
+
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','yt']
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
