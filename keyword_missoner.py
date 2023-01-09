@@ -20,8 +20,6 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     else:
         date_int = date2int(date)
     web_id_all = fetch_missoner_web_id(group)
-    print(web_id_all)
-    return
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
