@@ -11,9 +11,10 @@ from db import DBhelper
 from media.Media import Media
 from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UTC0
 from slackwarningletter import slack_warning
+import argparse
 ## main, process one day if assign date, default is today
 @timing
-def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
+def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0=False):
     if (date == None):
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
@@ -29,7 +30,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,is_UTC0=False):
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
     media = Media()
-    web_id_all = fetch_missoner_web_id()
+    web_id_all = fetch_missoner_web_id(group)
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','yt']
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
@@ -435,8 +436,8 @@ def test_speed():
 
 
 @timing
-def fetch_missoner_web_id():
-    query = "SELECT web_id FROM web_id_table where missoner_keyword_enable=1"
+def fetch_missoner_web_id(groups=1):
+    query = f"SELECT web_id FROM web_id_table where missoner_keyword_enable={groups}"
     print(query)
     data = MySqlHelper('dione').ExecuteSelect(query)
     web_id_all = [d[0] for d in data]
@@ -579,8 +580,12 @@ if __name__ == '__main__':
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
+    parser = argparse.ArgumentParser(description='select_web_id_group number')
+    parser.add_argument("-g", "--group", help="select_web_id_group")
+    args = parser.parse_args()
+    group = args.group
 
-    update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,is_UTC0=is_UTC0)
+    update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,group=group,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
