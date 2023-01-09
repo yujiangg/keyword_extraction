@@ -31,6 +31,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     ## set up media
     media = Media()
     web_id_all = fetch_missoner_web_id(group)
+    print(web_id_all)
+    return
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','yt']
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
