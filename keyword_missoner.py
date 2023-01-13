@@ -593,5 +593,8 @@ if __name__ == '__main__':
     t_end = time.time()
     t_spent = t_end - t_start
     print(f'finish all routine spent: {t_spent}s')
+    slack_letter = slack_warning()
     if t_spent >= 3600:
-        slack_warning().send_letter(f'流量小編{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
+        slack_letter.send_letter(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
+    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s)
+    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s)
