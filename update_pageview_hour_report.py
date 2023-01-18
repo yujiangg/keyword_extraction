@@ -11,7 +11,7 @@ import pandas as pd
 import re
 from tqdm import tqdm
 import hashlib
-
+from slackwarningletter import slack_warning
 
 class pageveiw_hour:
     def __init__(self):
@@ -181,6 +181,10 @@ class pageveiw_hour:
 
 
 if __name__ == '__main__':
-    pageveiw = pageveiw_hour()
-    df = pageveiw.main()
-    DBhelper.ExecuteUpdatebyChunk(df, db='dione_2', table='pageviews_report_hour', chunk_size=100000,is_ssh=False)
+    try:
+        pageveiw = pageveiw_hour()
+        df = pageveiw.main()
+        DBhelper.ExecuteUpdatebyChunk(df, db='dione_2', table='pageviews_report_hour', chunk_size=100000,is_ssh=False)
+    except:
+        slack_letter = slack_warning()
+        slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗')
