@@ -19,7 +19,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
         date_int = date2int(date)
-    web_id_all = fetch_missoner_web_id(group)
+    web_id_dict = fetch_missoner_web_id_list(group)
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
@@ -30,19 +30,18 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     stopwords = jieba_base.get_stopword_list()
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
-    media = Media()
 
-    source_list = ['google', 'likr','facebook','xuite','yahoo','line','yt']
+    source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
     #  if df_keyword_crossHot_last.shape[0]==0:
     #      df_keyword_crossHot_last = fetch_crossHot_keyword(date_int) ## if size is 0, directly fetch from keyword_missoner
-    for web_id in web_id_all:
+    for web_id in web_id_dict:
         ## fetch source domain mapping
         source_domain_mapping = fetch_source_domain_mapping(web_id)
         source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
         ## fetch user_based popular article
-        df_hot = media.fetch_hot_articles(web_id, n, date=date, is_UTC0=is_UTC0)
+        df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
         if df_hot.size == 0:
             print('no valid data in dione.report_hour')
             continue
@@ -65,7 +64,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             ## separate keyword_list to build dictionary ##
             if row['article_id'] not in domain_dict.keys():
                 domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                  'xuite': 0, 'yt': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
+                                                  'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
             if dm in source_domain_mapping:
                 domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
             elif dm in domain_dict[row['article_id']].keys():
@@ -82,7 +81,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm)
                 if keyword not in keyword_domain_dict.keys():
                     keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                   'xuite': 0, 'yt': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
+                                                   'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
                 if dm in source_domain_mapping:
                     keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
                 elif dm in keyword_domain_dict[keyword].keys():
@@ -101,6 +100,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         #date = date_int
         #hour = get_hour(is_UTC0=is_UTC0)
         for name, source_data in source_dict_article.items():
+            if name == 'youtube':
+                name = 'yt'
             db_source_article_name = f'missoner_article_{name}'
             source_data_df = pd.DataFrame.from_dict(source_data, 'index',
                                                     columns=['web_id', 'title', 'content', 'pageviews', 'landings',
@@ -110,6 +111,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
                                           is_ssh=False)
         for name, source_data in source_dict_keyword.items():
+            if name == 'youtube':
+                name = 'yt'
             db_source_article_name = f'missoner_keyword_{name}'
             source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
             source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
@@ -147,9 +150,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
 
         domain_df = get_domain_df(domain_dict,'article_id',web_id,date_int)
+        domain_df = domain_df.rename({'youtube':'yt'},axis='columns')
         DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
                                       is_ssh=False)
         keyword_domain_df = get_domain_df(keyword_domain_dict, 'keyword',web_id,date_int)
+        keyword_domain_df = keyword_domain_df.rename({'youtube': 'yt'}, axis='columns')
         DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
                                       is_ssh=False)
 
@@ -240,6 +245,52 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
     # DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
     return
+
+def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
+    if (date == None):
+        date_int = date2int(get_today(is_UTC0=is_UTC0))
+    else:
+        date_int = date2int(date)
+    group = web_id_dict[web_id]
+    df_hot_1 = fetch_pageview_hot_df(web_id,date_int,n)
+    if group == 0:
+        df_hot_2 = fetch_article_df(web_id)
+    elif group == 1:
+        df_hot_2 = fetch_ecom_df(web_id)
+    elif group == 2:
+        df_hot_2 = fetch_blog_df(web_id)
+    df_hot = pd.merge(df_hot_1,df_hot_2)
+    return df_hot
+def fetch_pageview_hot_df(web_id,dateint,n):
+    qurey = f"SELECT web_id,article_id,source_domain,SUM(pageviews) as pageviews, SUM(landings) as landings, SUM(exits) as exits,SUM(bounce) as bounce, SUM(timeOnPage) as timeOnPage,date FROM pageviews_report_hour where date = '{dateint}' and web_id = '{web_id}'group by article_id,source_domain order by pageviews desc limit {n}"
+    data = DBhelper('dione_2').ExecuteSelect(qurey)
+    columns = ['web_id', 'article_id','source_domain','pageviews', 'landings', 'exits', 'bounce', 'timeOnPage', 'date']
+    df_hot = pd.DataFrame(data=data, columns=columns)
+    return df_hot
+
+def fetch_article_df(web_id):
+    qurey = f"SELECT web_id,signature,title,content,keywords From news_table where web_id = '{web_id}'"
+    data = DBhelper('jupiter_new').ExecuteSelect(qurey)
+    columns = ['web_id', 'article_id','title','content', 'keywords']
+    df_hot = pd.DataFrame(data=data, columns=columns)
+    return df_hot
+
+def fetch_blog_df(web_id):
+    qurey = f"SELECT web_id,signature,title,content From blog_table where web_id = '{web_id}'"
+    data = DBhelper('jupiter_new').ExecuteSelect(qurey)
+    columns = ['web_id', 'article_id','title','content']
+    df_hot = pd.DataFrame(data=data, columns=columns)
+    df_hot['keywords'] ='_'
+    return df_hot
+
+def fetch_ecom_df(web_id):
+    qurey = f"SELECT web_id,product_id,title,content From ecom_table where web_id = '{web_id}'"
+    data = DBhelper('jupiter_new').ExecuteSelect(qurey)
+    columns = ['web_id', 'article_id','title','content']
+    df_hot = pd.DataFrame(data=data, columns=columns)
+    df_hot['keywords'] ='_'
+    return df_hot
+
 
 def collect_source_article_pageviews_by_source(article_dict,row,params_all,params):
     ## save each keyword from a article ##
@@ -437,12 +488,10 @@ def test_speed():
 
 
 @timing
-def fetch_missoner_web_id(groups=1):
-    query = f"SELECT web_id FROM web_id_table where missoner_keyword_enable={groups}"
-    print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
-    web_id_all = [d[0] for d in data]
-    return web_id_all
+def fetch_missoner_web_id_list(group):
+    qurey = f"SELECT web_id,web_id_type FROM missoner_web_id_table WHERE enable = 1 and gp = {group}"
+    data = DBhelper('dione_2').ExecuteSelect(qurey)
+    return {i: v for i, v in data}
 
 @timing
 def fetch_source_domain_mapping(web_id):
