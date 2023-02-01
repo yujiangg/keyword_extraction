@@ -19,7 +19,7 @@ class Composer_jieba:
         self.web_id_Vietnam = ['thanhnien2021', 'tuoitrexahoi']
         self.web_id_with_hash_tag = ['ctnews', 'mirrormedia', 'upmedia', 'btnet', 'bnext',
                                      'dailyview', 'moneyweekly', 'nongnong', 'newscts', 'newtalk',
-                                     'setn', 'nownews']
+                                     'setn', 'nownews','ftvnews']
         self.ROOT_DIR = ROOT_DIR
 
     def set_config(self, filename_stopwords='stop_words.txt', filename_idf='idf_train_1000000.txt',
