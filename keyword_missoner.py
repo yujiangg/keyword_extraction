@@ -563,7 +563,7 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     news_clean = jieba_base.filter_str(news, pattern="https:\/\/([0-9a-zA-Z.\/]*)")  ## pattern for https
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_'):
-        keyword_list = jieba.analyse.extract_tags(news_clean, topK=8)
+        keyword_list = jieba.analyse.extract_tags(news_clean, topK=3)
         keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner)
         keywords = ','.join(keyword_list)  ## add keywords
         is_cut = 1
