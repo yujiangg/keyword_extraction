@@ -482,7 +482,7 @@ def fetch_now_crossHot_keywords(date_int):
 def fetch_black_list_keywords(web_id):
     query = f"""SELECT name FROM BW_list where property=0 and web_id = '{web_id}'"""
     print(query)
-    data = DBhelper('missioner', is_ssh=True).ExecuteSelect(query)
+    data = DBhelper('missioner').ExecuteSelect(query)
     black_list = [d[0] for d in data]
     return black_list
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
