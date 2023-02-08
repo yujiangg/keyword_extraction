@@ -30,7 +30,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     stopwords = jieba_base.get_stopword_list()
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
-
+    #black_list = fetch_black_list_keywords()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
@@ -40,6 +40,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         ## fetch source domain mapping
         source_domain_mapping = fetch_source_domain_mapping(web_id)
         source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
+        black_list = fetch_black_list_keywords(web_id)
+        #while_list = fetch_while_list_keywords(web_id)
         ## fetch user_based popular article
         df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
         if df_hot.size == 0:
@@ -55,7 +57,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         source_dict_keyword = {sr: {} for sr in source_list}
         for index, row in df_hot.iterrows():
             # ## process keyword ##
-            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_usertag)
+            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_usertag,black_list)
             params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
             params_data = np.array(row[['web_id', 'title', 'content']])
             params_all = np.append(params_data, params)
@@ -456,10 +458,16 @@ def fetch_now_crossHot_keywords(date_int):
     data = MySqlHelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
-
-def clean_keyword_list(keyword_list, stopwords, stopwords_missoner):
+def fetch_black_list_keywords(web_id):
+    query = f"""SELECT name FROM BW_list where property=0 and web_id = '{web_id}'"""
+    print(query)
+    data = DBhelper('missioner', is_ssh=True).ExecuteSelect(query)
+    black_list = [d[0] for d in data]
+    return black_list
+def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
+    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwotds_db)
     keyword_list = Composer_jieba().filter_quantifier(keyword_list)  ## remove number+quantifier, ex: 5.1萬
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9]{2}")  ## remove 2 digit number
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9.]*")  ## remove floating
@@ -555,7 +563,7 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     return df
 
 ## cut keyword list if keywords is empty
-def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
+def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list):
     ## process keyword ##
     keywords = row['keywords']
     #news = row['title'] + ' ' + row['content']
@@ -563,13 +571,13 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner):
     news_clean = jieba_base.filter_str(news, pattern="https:\/\/([0-9a-zA-Z.\/]*)")  ## pattern for https
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_'):
-        keyword_list = jieba.analyse.extract_tags(news_clean, topK=5)
-        keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner)
+        keyword_list = jieba.analyse.extract_tags(news_clean, topK=10)
+        keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)[:5]
         keywords = ','.join(keyword_list)  ## add keywords
         is_cut = 1
     else:
         keyword_list = [k.strip() for k in keywords.split(',')]
-        keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner)
+        keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)
         is_cut = 0
     return keywords, keyword_list, is_cut
 
