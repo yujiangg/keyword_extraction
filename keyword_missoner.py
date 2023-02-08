@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import time
 import datetime
+import pickle
 from basic.decorator import timing
 from jieba_based.jieba_utils import Composer_jieba
 from db.mysqlhelper import MySqlHelper
@@ -28,8 +29,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # jieba_base.add_words(white_list)
 
     stopwords = jieba_base.get_stopword_list()
-    stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
+    stopwords_missoner = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
+
+    all_dict_set = fetch_all_dict(jieba_base)
     #black_list = fetch_black_list_keywords()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
     # web_id_all = ['ctnews']
@@ -57,7 +60,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         source_dict_keyword = {sr: {} for sr in source_list}
         for index, row in df_hot.iterrows():
             # ## process keyword ##
-            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_usertag,black_list)
+            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set)
             params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
             params_data = np.array(row[['web_id', 'title', 'content']])
             params_all = np.append(params_data, params)
@@ -247,6 +250,24 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
     # DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
     return
+
+def fetch_all_dict(jieba_base):
+    f1 = open('./jieba_based/add_words.txt')
+    text1=set()
+    for line in f1:
+        text1.add(line.split('\n')[0])
+    f2 = open('./jieba_based/user_dict.txt')
+    text2=set()
+    for line in f2:
+        text2.add(line.split('\n')[0])
+    text3  = jieba_base.fetch_gtrend_keywords()
+    text3 = set(text3)
+    with open(f'./jieba_based/all_hashtag.pickle', 'rb') as f:
+        all_hashtag = pickle.load(f)
+    text4 = set(all_hashtag)
+    all_dict_set = set.union(text1,text2,text3,text4)
+    return all_dict_set
+
 
 def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
     if (date == None):
@@ -563,7 +584,7 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     return df
 
 ## cut keyword list if keywords is empty
-def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list):
+def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set):
     ## process keyword ##
     keywords = row['keywords']
     #news = row['title'] + ' ' + row['content']
@@ -572,6 +593,7 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_l
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_'):
         keyword_list = jieba.analyse.extract_tags(news_clean, topK=10)
+        keyword_list = [i for i in keyword_list if i in all_dict_set]
         keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)[:5]
         keywords = ','.join(keyword_list)  ## add keywords
         is_cut = 1
