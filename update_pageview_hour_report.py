@@ -147,15 +147,19 @@ class pageveiw_hour:
                         last_time = self.str_to_timetamp(view[5])
                         if i == L:
                             view[-1] = 1
+                            view[-2] = 1
                         continue
-                    view[6] = source if source != 'None' else view[6]
                     now_time = self.str_to_timetamp(view[5])
-                    pageview[i - 1][-4] = now_time - last_time
+                    time_on_pages = now_time - last_time
+                    view[6] = source if source != 'None' else view[6]
                     last_time = now_time
-                    if i == L:
+                    pageview[i - 1][-4] = time_on_pages
+                    if time_on_pages > 1800:
+                        pageview[i - 1][-2] = 1
+                        pageview[i - 1][-4] = 0
+                    if i == L and i != 0:
                         view[-1] = 1
                         continue
-                    view[-2] = 1
         return data_dic
 
     def data_to_df(self, data_dic, hour=None):
