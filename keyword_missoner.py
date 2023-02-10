@@ -265,7 +265,8 @@ def fetch_all_dict(jieba_base):
     with open(f'./jieba_based/all_hashtag.pickle', 'rb') as f:
         all_hashtag = pickle.load(f)
     text4 = set(all_hashtag)
-    all_dict_set = set.union(text1,text2,text3,text4)
+    text5 = fetch_google_ads_keyword()
+    all_dict_set = set.union(text1,text2,text3,text4,text5)
     return all_dict_set
 
 
@@ -297,6 +298,12 @@ def fetch_article_df(web_id):
     columns = ['web_id', 'article_id','title','content', 'keywords']
     df_hot = pd.DataFrame(data=data, columns=columns)
     return df_hot
+
+def fetch_google_ads_keyword():
+    qurey = "SELECT keyword FROM keyword_value WHERE low_price != 0"
+    data = DBhelper('gads').ExecuteSelect(qurey)
+    return set([i[0] for i in data])
+
 
 def fetch_blog_df(web_id):
     qurey = f"SELECT web_id,signature,title,content From blog_table where web_id = '{web_id}'"
