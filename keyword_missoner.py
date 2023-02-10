@@ -288,8 +288,8 @@ def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
     df_hot = pd.merge(df_hot_1,df_hot_2)
     return df_hot
 def fetch_pageview_hot_df(web_id,dateint,n):
-    qurey = f"SELECT web_id,article_id,source_domain,SUM(pageviews) as pageviews, SUM(landings) as landings, SUM(exits) as exits,SUM(bounce) as bounce, SUM(timeOnPage) as timeOnPage,date FROM pageviews_report_hour where date = '{dateint}' and web_id = '{web_id}'group by article_id,source_domain order by pageviews desc limit {n}"
-    data = DBhelper('dione_2').ExecuteSelect(qurey)
+    qurey = f"SELECT web_id,article_id,source_domain,SUM(pageviews) as pageviews, SUM(landings) as landings, SUM(exits) as exits,SUM(bounce) as bounce, SUM(timeOnPage) as timeOnPage,date FROM pageviews_report_hour_missoner where date = '{dateint}' and web_id = '{web_id}'group by article_id,source_domain order by pageviews desc limit {n}"
+    data = DBhelper('dione').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','source_domain','pageviews', 'landings', 'exits', 'bounce', 'timeOnPage', 'date']
     df_hot = pd.DataFrame(data=data, columns=columns)
     return df_hot
@@ -524,7 +524,7 @@ def test_speed():
 @timing
 def fetch_missoner_web_id_list(group):
     qurey = f"SELECT web_id,web_id_type FROM missoner_web_id_table WHERE enable = 1 and gp = {group}"
-    data = DBhelper('dione_2').ExecuteSelect(qurey)
+    data = DBhelper('dione').ExecuteSelect(qurey)
     return {i: v for i, v in data}
 
 @timing

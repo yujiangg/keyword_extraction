@@ -34,7 +34,7 @@ class pageveiw_hour:
 
     def fetch_missoner_web_id_list(self):
         qurey = "SELECT web_id FROM missoner_web_id_table WHERE enable = 1"
-        data = DBhelper('dione_2').ExecuteSelect(qurey)
+        data = DBhelper('dione').ExecuteSelect(qurey)
         return [i[0] for i in data]
 
     def fetch_webid_rule(self, web_id_list):
@@ -73,7 +73,7 @@ class pageveiw_hour:
     def fetch_source_domain_mapping(self, web_id):
         query = f"SELECT website_web_id FROM missoner_web_id_table where web_id='{web_id}' and enable ='1'"
         print(query)
-        data = DBhelper('dione_2').ExecuteSelect(query)
+        data = DBhelper('dione').ExecuteSelect(query)
         source_domain_mapping = [d[0] for d in data]
         return source_domain_mapping
 
@@ -86,7 +86,7 @@ class pageveiw_hour:
     def get_domain_list(self):
         query = f"SELECT web_id FROM missoner_web_id_table where web_id_type = '3'"
         print(query)
-        data = DBhelper('dione_2').ExecuteSelect(query)
+        data = DBhelper('dione').ExecuteSelect(query)
         return [d[0] for d in data]
 
     def check_domain(self, url, web_id):
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     try:
         pageveiw = pageveiw_hour()
         df = pageveiw.main()
-        DBhelper.ExecuteUpdatebyChunk(df, db='dione_2', table='pageviews_report_hour', chunk_size=100000,is_ssh=False)
+        DBhelper.ExecuteUpdatebyChunk(df, db='dione', table='pageviews_report_hour_missoner', chunk_size=100000,is_ssh=False)
     except:
         slack_letter = slack_warning()
         slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗')
