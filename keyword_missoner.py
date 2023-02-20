@@ -180,7 +180,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         # weekday = str(temp.dayofweek + 1)
 
         df_keyword['hour'] = hour
-        if int(hour) <= 2:
+        if int(hour) <= 1:
             df_keyword['pageviews_hour'] = df_keyword['pageviews']
         else:
             df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
@@ -209,7 +209,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
         df_article['hour'] = hour
-        if int(hour) <= 2:
+        if int(hour) <= 1:
             df_article['pageviews_hour'] = df_article['pageviews']
         else:
             df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
@@ -262,13 +262,13 @@ def fetch_all_dict(jieba_base):
         text2.add(line.split('\n')[0])
     text3  = jieba_base.fetch_gtrend_keywords()
     text3 = set(text3)
-    with open(f'./jieba_based/all_hashtag.pickle', 'rb') as f:
-        all_hashtag = pickle.load(f)
-    text4 = set(all_hashtag)
+    # with open(f'./jieba_based/all_hashtag.pickle', 'rb') as f:
+    #     all_hashtag = pickle.load(f)
+    # text4 = set(all_hashtag)
     with open(f'./jieba_based/google_ads_keyword.pickle', 'rb') as f:
         google_ads_keyword = pickle.load(f)
     text5 = set(google_ads_keyword)
-    all_dict_set = set.union(text1,text2,text3,text4,text5)
+    all_dict_set = set.union(text1,text2,text3,text5)
     return all_dict_set
 
 
