@@ -284,15 +284,17 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         week_article_end = time.time()
         time_dict[web_id]['week_article'] = week_article_end - week_article_start
 
-        keyword_article_start = time.time()
+        keyword_article_start_1 = time.time()
         ## save keywords <=> articles mapping, tabel: missoner_keyword_article
         df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
+        keyword_article_end_1 = time.time()
         #keyword_article_list_dict = df_keyword_article.to_dict('records')
-
+        keyword_article_start_2 = time.time()
         DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
-        keyword_article_end = time.time()
+        keyword_article_end_2 = time.time()
 
-        time_dict[web_id]['keyword_article'] = keyword_article_end - keyword_article_start
+        time_dict[web_id]['keyword_article_1'] = keyword_article_end_1 - keyword_article_start_1
+        time_dict[web_id]['keyword_article_2'] = keyword_article_end_2 - keyword_article_start_2
         #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
         #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
 
@@ -323,17 +325,22 @@ def fetch_all_dict(jieba_base):
     text2=set()
     for line in f2:
         text2.add(line.split('\n')[0])
-    text3  = jieba_base.fetch_gtrend_keywords()
+    text3 = jieba_base.fetch_gtrend_keywords()
     text3 = set(text3)
     # with open(f'./jieba_based/all_hashtag.pickle', 'rb') as f:
     #     all_hashtag = pickle.load(f)
     # text4 = set(all_hashtag)
-    with open(f'./jieba_based/google_ads_keyword.pickle', 'rb') as f:
-        google_ads_keyword = pickle.load(f)
-    text5 = set(google_ads_keyword)
+    # with open(f'./jieba_based/google_ads_keyword.pickle', 'rb') as f:
+    #     google_ads_keyword = pickle.load(f)
+    text5 = fetch_google_ads_keyword()
+    text5 = set(text5)
     all_dict_set = set.union(text1,text2,text3,text5)
     return all_dict_set
 
+def fetch_google_ads_keyword():
+    qurey = "SELECT keyword FROM keyword_value WHERE low_price != 0"
+    data = DBhelper('gads',is_ssh = True).ExecuteSelect(qurey)
+    return [i[0] for i in data]
 
 def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
     if (date == None):
