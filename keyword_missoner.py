@@ -172,9 +172,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         mean_pageviews = np.mean(pageviews_array)
         df_keyword = df_keyword.query(f"pageviews > {mean_pageviews}").fillna(0)
         ## save keyword statistics to table: missoner_keyword
-        keyword_list_dict = df_keyword.to_dict('records')
-        query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
-        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+        #keyword_list_dict = df_keyword.to_dict('records')
+
+        DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
+        # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
+        # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
 
         # temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
         # weekday = str(temp.dayofweek + 1)
@@ -191,9 +193,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             pass
 
         table_name = f"missoner_keyword_hour_{weekday}"
-        keyword_list_dict = df_keyword.to_dict('records')
-        query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
-        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+        #keyword_list_dict = df_keyword.to_dict('records')
+
+        DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table= table_name , chunk_size=100000, is_ssh=False)
+        #query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
+        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
         ###article
 
         df_article = pd.DataFrame.from_dict(data_save_article, "index")
@@ -204,9 +208,12 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         mean_pageviews_article = np.mean(pageviews_array_article)
         df_article = df_article.query(f"pageviews > {mean_pageviews_article}").fillna(0)
         ## save keyword statistics to table: missoner_keyword
-        article_list_dict = df_article.to_dict('records')
-        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
-        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+        #article_list_dict = df_article.to_dict('records')
+
+        DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table='missoner_article', chunk_size=100000, is_ssh=False)
+
+        #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
+        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
         df_article['hour'] = hour
         if int(hour) <= 1:
@@ -219,19 +226,24 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         except:
             pass
 
-        article_list_dict = df_article.to_dict('records')
+        #article_list_dict = df_article.to_dict('records')
         table_name = f"missoner_article_hour_{weekday}"
-        query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
-        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+
+        DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table=table_name, chunk_size=100000, is_ssh=False)
+        #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
+        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
 
 
 
 
         ## save keywords <=> articles mapping, tabel: missoner_keyword_article
         df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
-        keyword_article_list_dict = df_keyword_article.to_dict('records')
-        query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
-        MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
+        #keyword_article_list_dict = df_keyword_article.to_dict('records')
+
+        DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
+
+        #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
+        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
 
     # ## save cross hot keywords, tabel: missoner_keyword_crossHot (compute after all web_id ran) (without trend)
     ## deal with trend before replace missoner_keyword_crossHot table
