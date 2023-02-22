@@ -604,6 +604,7 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_l
         is_cut = 1
     else:
         keyword_list = [k.strip() for k in keywords.split(',')]
+        keyword_list = [i for i in keyword_list if i in all_dict_set]
         keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)
         is_cut = 0
     return keywords, keyword_list, is_cut
