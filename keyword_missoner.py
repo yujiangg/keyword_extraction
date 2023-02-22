@@ -20,6 +20,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         date_int = date2int(get_today(is_UTC0=is_UTC0))
     else:
         date_int = date2int(date)
+    step0_start = time.time()
     web_id_dict = fetch_missoner_web_id_list(group)
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
@@ -31,7 +32,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     stopwords = jieba_base.get_stopword_list()
     stopwords_missoner = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
-
+    time_dict = {}
     all_dict_set = fetch_all_dict(jieba_base)
     #black_list = fetch_black_list_keywords()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
@@ -39,7 +40,12 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
     #  if df_keyword_crossHot_last.shape[0]==0:
     #      df_keyword_crossHot_last = fetch_crossHot_keyword(date_int) ## if size is 0, directly fetch from keyword_missoner
+
+    step0_end = time.time()
     for web_id in web_id_dict:
+        time_dict[web_id] = {}
+
+        step1_start = time.time()
         ## fetch source domain mapping
         source_domain_mapping = fetch_source_domain_mapping(web_id)
         source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
@@ -47,6 +53,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         #while_list = fetch_while_list_keywords(web_id)
         ## fetch user_based popular article
         df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
+
+        step1_end = time.time()
+
+        time_dict[web_id]['step1_time'] = step1_end - step1_start
+
         if df_hot.size == 0:
             print('no valid data in dione.report_hour')
             continue
@@ -58,6 +69,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         keyword_domain_dict = {}
         source_dict_article = {sr: {} for sr in source_list}
         source_dict_keyword = {sr: {} for sr in source_list}
+
+        key_cut_start = time.time()
         for index, row in df_hot.iterrows():
             # ## process keyword ##
             keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set)
@@ -104,6 +117,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
         #date = date_int
         #hour = get_hour(is_UTC0=is_UTC0)
+        key_cut_end = time.time()
+        time_dict[web_id]['key_cut_time'] = key_cut_end - key_cut_start
+
+        source_article_start = time.time()
+
         for name, source_data in source_dict_article.items():
             if name == 'youtube':
                 name = 'yt'
@@ -115,6 +133,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             source_data_df['date'] = date_int
             DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
                                           is_ssh=False)
+        source_article_end = time.time()
+
+        time_dict[web_id]['source_article'] = source_article_end - source_article_start
+
+        source_keyword_start = time.time()
         for name, source_data in source_dict_keyword.items():
             if name == 'youtube':
                 name = 'yt'
@@ -124,6 +147,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             source_data_df['date'] = date_int
             source_data_df['web_id'] = web_id
             DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
+
+        source_keyword_end = time.time()
+        time_dict[web_id]['source_keyword'] = source_keyword_end - source_keyword_start
+
+        data_build_start = time.time()
         ## build dict for building DataFrame
         data_save, data_trend = {}, {}
         i = 0
@@ -144,7 +172,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date_int}
             print(f'{data_trend_article[i]}')
             i += 1
+        data_build_end = time.time()
 
+        time_dict[web_id]['data_build'] = data_build_end - data_build_start
+
+        trend_start = time.time()
         ## deal with trend before replace missoner_keyword table
         df_pageviews_last = fetch_now_keywords_by_web_id(web_id, is_UTC0=is_UTC0)
         df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
@@ -153,7 +185,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         df_pageviews_last_article = fetch_now_article_by_web_id(web_id, is_UTC0=is_UTC0)
         df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
         df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
+        trend_end = time.time()
 
+        time_dict[web_id]['compute_trend'] = trend_end - trend_start
+
+        all_domain_start = time.time()
         domain_df = get_domain_df(domain_dict,'article_id',web_id,date_int)
         domain_df = domain_df.rename({'youtube':'yt'},axis='columns')
         DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
@@ -162,7 +198,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         keyword_domain_df = keyword_domain_df.rename({'youtube': 'yt'}, axis='columns')
         DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
                                       is_ssh=False)
+        all_domain_end = time.time()
 
+        time_dict[web_id]['all_domain'] = all_domain_end - all_domain_start
+
+        all_keyword_start = time.time()
         ## build DataFrame
         df_keyword = pd.DataFrame.from_dict(data_save, "index")
         ## merge keyword and trend
@@ -177,10 +217,12 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
         # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
         # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
-
+        all_keyword_end = time.time()
+        time_dict[web_id]['all_keyword'] = all_keyword_end - all_keyword_start
         # temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
         # weekday = str(temp.dayofweek + 1)
 
+        week_keyword_start = time.time()
         df_keyword['hour'] = hour
         if int(hour) <= 1:
             df_keyword['pageviews_hour'] = df_keyword['pageviews']
@@ -196,9 +238,14 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         #keyword_list_dict = df_keyword.to_dict('records')
 
         DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table= table_name , chunk_size=100000, is_ssh=False)
+
+        week_keyword_end = time.time()
+
+        time_dict[web_id]['week_keyword'] = week_keyword_end - week_keyword_start
         #query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
         #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
         ###article
+        all_article_start = time.time()
 
         df_article = pd.DataFrame.from_dict(data_save_article, "index")
         ## merge keyword and trend
@@ -211,10 +258,12 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         #article_list_dict = df_article.to_dict('records')
 
         DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table='missoner_article', chunk_size=100000, is_ssh=False)
+        all_article_end = time.time()
 
+        time_dict[web_id]['all_article'] = all_article_end - all_article_start
         #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
         #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
-
+        week_article_start = time.time()
         df_article['hour'] = hour
         if int(hour) <= 1:
             df_article['pageviews_hour'] = df_article['pageviews']
@@ -232,16 +281,18 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
         DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table=table_name, chunk_size=100000, is_ssh=False)
         #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
         #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+        week_article_end = time.time()
+        time_dict[web_id]['week_article'] = week_article_end - week_article_start
 
-
-
-
+        keyword_article_start = time.time()
         ## save keywords <=> articles mapping, tabel: missoner_keyword_article
         df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
         #keyword_article_list_dict = df_keyword_article.to_dict('records')
 
         DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
+        keyword_article_end = time.time()
 
+        time_dict[web_id]['keyword_article'] = keyword_article_end - keyword_article_start
         #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
         #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
 
@@ -261,7 +312,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     #
     # df_crossHot_keyword_domain = fetch_crossHot_keyword_domain(date_int)
     # DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
-    return
+    return time_dict,step0_end-step0_start
 
 def fetch_all_dict(jieba_base):
     f1 = open('./jieba_based/add_words.txt')
@@ -683,7 +734,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     group = args.group
 
-    update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,group=group,is_UTC0=is_UTC0)
+    time_dict,step0_time = update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,group=group,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
@@ -693,4 +744,4 @@ if __name__ == '__main__':
     slack_letter = slack_warning()
     if t_spent >= 3600:
         slack_letter.send_letter(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
-    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s')
+    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次詳細執行時間為{str(time_dict)},{step0_time}')
