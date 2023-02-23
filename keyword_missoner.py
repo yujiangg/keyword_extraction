@@ -382,7 +382,7 @@ def fetch_blog_df(web_id):
     return df_hot
 
 def fetch_ecom_df(web_id):
-    qurey = f"SELECT web_id,product_id,title,content From ecom_table where web_id = '{web_id}'"
+    qurey = f"SELECT web_id,signature,title,content From ecom_table where web_id = '{web_id}'"
     data = DBhelper('jupiter_new').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','title','content']
     df_hot = pd.DataFrame(data=data, columns=columns)
