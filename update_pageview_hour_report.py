@@ -129,7 +129,7 @@ class pageveiw_hour:
                         i['current_url'] = i['record_user'].get('un')
                         i['title'] = i['record_user'].get('m_t')
                     if 'value' in i :
-                        fxxk = f.get('value')
+                        fxxk = i.get('value')
                         if type(fxxk) == str:
                             i['value'] = eval(fxxk)
                         i['referrer_url'] = i['value'].get('landing_url')
