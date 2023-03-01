@@ -207,11 +207,7 @@ class pageveiw_hour:
     def bulid_record_hour(self, obj):
         dic = collections.defaultdict(int)
         dic_in = collections.defaultdict(int)
-        s = 0
         for o in tqdm(obj):
-            s += 1
-            if s == 3:
-                break
             k = json.loads(self.awsS3.Read(o.key))
             for i in k:
                 if not i.get('web_id'):
