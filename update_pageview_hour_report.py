@@ -204,12 +204,56 @@ class pageveiw_hour:
         df['date'] = int(''.join(self.tw_date.split('-')))
         return df
 
+    def bulid_record_hour(self, obj):
+        dic = collections.defaultdict(int)
+        dic_in = collections.defaultdict(int)
+        s = 0
+        for o in tqdm(obj):
+            s += 1
+            if s == 3:
+                break
+            k = json.loads(self.awsS3.Read(o.key))
+            for i in k:
+                if not i.get('web_id'):
+                    continue
+                if i.get('event_type') == 'leave':
+                    i['referrer_url'] = i['record_user'].get('ul')
+                if 'value' in i :
+                    fxxk = i.get('value')
+                    if type(fxxk) == str:
+                        i['value'] = eval(fxxk)
+                        i['referrer_url'] = i['value'].get('landing_url')
+                if i.get('referrer_url'):
+                    web_id = i.get('web_id')
+                    dic[web_id] += 1
+                    if re.findall(web_id,i.get('referrer_url')):
+                        dic_in[web_id] += 1
+        df = pd.DataFrame.from_dict(dic, orient='index', columns=['record'])
+        df = df.reset_index()
+        df['web_id'] = df['index']
+        df = df[['web_id', 'record']]
+        df_in = pd.DataFrame.from_dict(dic_in, orient='index', columns=['internal'])
+        df_in = df_in.reset_index()
+        df_in['web_id'] = df_in['index']
+        df_in = df_in[['web_id', 'internal']]
+
+        df_mix = pd.merge(df, df_in, how='left', on='web_id')
+        df_mix.fillna(0, inplace=True)
+        df_mix['internal'] = df_mix['internal'].astype('int')
+        df_mix['external'] = df_mix.apply(lambda x: x['record'] - x['internal'],axis=1)
+        df_mix['external_Traffic_percentage'] = [round(i, 2) for i in df_mix['external'] / df_mix['record']]
+        df_mix['date'] = self.tw_date
+        df_mix['hours'] = self.tw_hour
+        df_mix = df_mix[df_mix['record'] > 10]
+        return df_mix
 
 if __name__ == '__main__':
     try:
         pageveiw = pageveiw_hour()
         df = pageveiw.main()
+        record_hour = pageveiw.bulid_record_hour(pageveiw.objects)
         DBhelper.ExecuteUpdatebyChunk(df, db='dione', table='pageviews_report_hour_missoner', chunk_size=100000,is_ssh=False)
+        DBhelper.ExecuteUpdatebyChunk(record_hour, db='dione', table='pageview_record_hours', chunk_size=100000, is_ssh=False)
     except:
         slack_letter = slack_warning()
         slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗')
