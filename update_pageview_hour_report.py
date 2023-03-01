@@ -247,8 +247,8 @@ if __name__ == '__main__':
     try:
         pageveiw = pageveiw_hour()
         df = pageveiw.main()
-        record_hour = pageveiw.bulid_record_hour(pageveiw.objects)
         DBhelper.ExecuteUpdatebyChunk(df, db='dione', table='pageviews_report_hour_missoner', chunk_size=100000,is_ssh=False)
+        record_hour = pageveiw.bulid_record_hour(pageveiw.objects)
         DBhelper.ExecuteUpdatebyChunk(record_hour, db='dione', table='pageview_record_hours', chunk_size=100000, is_ssh=False)
     except:
         slack_letter = slack_warning()
