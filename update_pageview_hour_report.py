@@ -21,7 +21,7 @@ class pageveiw_hour:
         self.tw_date, self.tw_hour = self.tw_now.strftime('%Y-%m-%d,%H').split(',')
 
         self.awsS3 = AmazonS3('elephants3')
-        self.web_id_list = self.fetch_missoner_web_id_list()
+        self.web_id_list = set(self.fetch_missoner_web_id_list())
         self.web_id_to_pattern_dict = self.fetch_webid_rule(self.web_id_list)
         self.domain_dict = self.fetch_domain_dict()
         self.domain_list = self.get_domain_list()
@@ -118,24 +118,21 @@ class pageveiw_hour:
                     continue
                 if 'behavior_type' not in i:
                     continue
+                if i.get('behavior_type') not in ('landing','likrTracking'):
+                    continue
+                if i.get('behavior_type') == 'likrTracking':
+                    if i.get('event_type') != 'leave':
+                        continue
                 if 'uuid' not in i or i['uuid'] == '_':
                     continue
                 if 'datetime' not in i and 'timestamp' not in i:
                     continue
-                if 'timestamp' in i: ##區別是否為電商,電商的會用timestamp
+                if 'timestamp' in i:
                     i['datetime'] = self.timetamp_to_srt(i['timestamp'])
-                    if i.get('event_type') == 'leave':
+                    if i.get('event_type') == 'leave': #### likrTracking
                         i['referrer_url'] = i['record_user'].get('ul')
                         i['current_url'] = i['record_user'].get('un')
                         i['title'] = i['record_user'].get('m_t')
-                    if 'value' in i :
-                        fxxk = i.get('value')
-                        if type(fxxk) == str:
-                            i['value'] = eval(fxxk)
-                        i['referrer_url'] = i['value'].get('landing_url')
-                        i['current_url'] = i['value'].get('referrer_url')
-                        i['title'] = i['value'].get('meta_title')
-
                 if not i.get('title') or not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
                     continue
                 if i['title'] == '_':
@@ -148,8 +145,6 @@ class pageveiw_hour:
                      self.check_domain(i['referrer_url'], i['web_id']), 0, 0, 0, 0])
                 if 'record_user' in i:
                     data_dic[i['web_id']][i['uuid']][-1][-4] = i['record_user'].get('t_p') if i['record_user'].get('t_p') else 0
-                if 'value' in i:
-                    data_dic[i['web_id']][i['uuid']][-1][-4] = i['value'].get('stay_time')/1000 if i['value'].get('stay_time') else 0
         return data_dic
 
     def count_timepage_landing_bounce_exit(self, data_dic):
