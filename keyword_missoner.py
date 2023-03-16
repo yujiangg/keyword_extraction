@@ -339,7 +339,7 @@ def fetch_all_dict(jieba_base):
     #     google_ads_keyword = pickle.load(f)
     text5 = fetch_google_ads_keyword()
     text5 = set(text5)
-    all_dict_set = set.union(text1,text2,text3,text5)
+    all_dict_set = set.union(text1,text3,text5)
     return all_dict_set
 
 def fetch_google_ads_keyword():

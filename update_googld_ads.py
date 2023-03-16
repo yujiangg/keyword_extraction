@@ -5,7 +5,7 @@ from jieba_based.jieba_utils import Composer_jieba
 
 def fetch_google_ads_keyword():
     qurey = "SELECT keyword FROM keyword_value WHERE low_price != 0"
-    data = DBhelper('gads').ExecuteSelect(qurey)
+    data = DBhelper('gads',is_ssh = True).ExecuteSelect(qurey)
     return [i[0] for i in data]
 
 
