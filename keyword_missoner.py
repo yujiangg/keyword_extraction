@@ -25,7 +25,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
-
+    slack_letter = slack_warning()
     # white_list = fetch_white_list_keywords()
     # jieba_base.add_words(white_list)
 
@@ -43,265 +43,268 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
     step0_end = time.time()
     for web_id in web_id_dict:
-        time_dict[web_id] = {}
+        try:
+            time_dict[web_id] = {}
 
-        step1_start = time.time()
-        ## fetch source domain mapping
-        source_domain_mapping = fetch_source_domain_mapping(web_id)
-        source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
-        black_list = fetch_black_list_keywords(web_id)
-        #while_list = fetch_while_list_keywords(web_id)
-        ## fetch user_based popular article
-        df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
+            step1_start = time.time()
+            ## fetch source domain mapping
+            source_domain_mapping = fetch_source_domain_mapping(web_id)
+            source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
+            black_list = fetch_black_list_keywords(web_id)
+            #while_list = fetch_while_list_keywords(web_id)
+            ## fetch user_based popular article
+            df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
 
-        step1_end = time.time()
+            step1_end = time.time()
 
-        time_dict[web_id]['step1_time'] = step1_end - step1_start
+            time_dict[web_id]['step1_time'] = step1_end - step1_start
 
-        if df_hot.size == 0:
-            print('no valid data in dione.report_hour')
-            continue
-        dict_keyword_article = {}
-        i = 0
-        keyword_dict = {}
-        article_dict = {}
-        domain_dict = {}
-        keyword_domain_dict = {}
-        source_dict_article = {sr: {} for sr in source_list}
-        source_dict_keyword = {sr: {} for sr in source_list}
+            if df_hot.size == 0:
+                print('no valid data in dione.report_hour')
+                continue
+            dict_keyword_article = {}
+            i = 0
+            keyword_dict = {}
+            article_dict = {}
+            domain_dict = {}
+            keyword_domain_dict = {}
+            source_dict_article = {sr: {} for sr in source_list}
+            source_dict_keyword = {sr: {} for sr in source_list}
 
-        key_cut_start = time.time()
-        for index, row in df_hot.iterrows():
-            # ## process keyword ##
-            keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set)
-            params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
-            params_data = np.array(row[['web_id', 'title', 'content']])
-            params_all = np.append(params_data, params)
-            dm = row['source_domain'].lower()
-            article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)
-            ## separate keyword_list to build dictionary ##
-            if row['article_id'] not in domain_dict.keys():
-                domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                  'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
-            if dm in source_domain_mapping:
-                domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
-            elif dm in domain_dict[row['article_id']].keys():
-                domain_dict[row['article_id']][dm] += int(row['pageviews'])
-            else:
-                domain_dict[row['article_id']]['other'] += int(row['pageviews'])
-
-
-            for keyword in keyword_list:
-                ## keyword and articles mapping, for table, missoner_keyword_article
-                dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut}
-                i += 1
-                ## compute pageviews by external and internal sources, for table, missoner_keyword
-                keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm)
-                if keyword not in keyword_domain_dict.keys():
-                    keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
-                                                   'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
+            key_cut_start = time.time()
+            for index, row in df_hot.iterrows():
+                # ## process keyword ##
+                keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set)
+                params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
+                params_data = np.array(row[['web_id', 'title', 'content']])
+                params_all = np.append(params_data, params)
+                dm = row['source_domain'].lower()
+                article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)
+                ## separate keyword_list to build dictionary ##
+                if row['article_id'] not in domain_dict.keys():
+                    domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
+                                                      'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
                 if dm in source_domain_mapping:
-                    keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
-                elif dm in keyword_domain_dict[keyword].keys():
-                    keyword_domain_dict[keyword][dm] += int(row['pageviews'])
+                    domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
+                elif dm in domain_dict[row['article_id']].keys():
+                    domain_dict[row['article_id']][dm] += int(row['pageviews'])
                 else:
-                    keyword_domain_dict[keyword]['other'] += int(row['pageviews'])
+                    domain_dict[row['article_id']]['other'] += int(row['pageviews'])
 
-            if dm in source_list:
-                # print(row['source_domain'])
-                source_dict_article[dm] = collect_source_article_pageviews_by_source(source_dict_article[dm], row, params_all, params)
+
                 for keyword in keyword_list:
                     ## keyword and articles mapping, for table, missoner_keyword_article
+                    dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut}
+                    i += 1
                     ## compute pageviews by external and internal sources, for table, missoner_keyword
-                    source_dict_keyword[dm] = collect_source_keyword_pageviews_by_source(source_dict_keyword[dm], row, params_all, params, keyword)
-            print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
-        #date = date_int
-        #hour = get_hour(is_UTC0=is_UTC0)
-        key_cut_end = time.time()
-        time_dict[web_id]['key_cut_time'] = key_cut_end - key_cut_start
+                    keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm)
+                    if keyword not in keyword_domain_dict.keys():
+                        keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
+                                                       'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
+                    if dm in source_domain_mapping:
+                        keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
+                    elif dm in keyword_domain_dict[keyword].keys():
+                        keyword_domain_dict[keyword][dm] += int(row['pageviews'])
+                    else:
+                        keyword_domain_dict[keyword]['other'] += int(row['pageviews'])
 
-        source_article_start = time.time()
+                if dm in source_list:
+                    # print(row['source_domain'])
+                    source_dict_article[dm] = collect_source_article_pageviews_by_source(source_dict_article[dm], row, params_all, params)
+                    for keyword in keyword_list:
+                        ## keyword and articles mapping, for table, missoner_keyword_article
+                        ## compute pageviews by external and internal sources, for table, missoner_keyword
+                        source_dict_keyword[dm] = collect_source_keyword_pageviews_by_source(source_dict_keyword[dm], row, params_all, params, keyword)
+                print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
+            #date = date_int
+            #hour = get_hour(is_UTC0=is_UTC0)
+            key_cut_end = time.time()
+            time_dict[web_id]['key_cut_time'] = key_cut_end - key_cut_start
 
-        for name, source_data in source_dict_article.items():
-            if name == 'youtube':
-                name = 'yt'
-            db_source_article_name = f'missoner_article_{name}'
-            source_data_df = pd.DataFrame.from_dict(source_data, 'index',
-                                                    columns=['web_id', 'title', 'content', 'pageviews', 'landings',
-                                                             'exits', 'bounce', 'timeOnPage'])
-            source_data_df = source_data_df.reset_index().rename(columns={'index': 'article_id'})
-            source_data_df['date'] = date_int
-            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
+            source_article_start = time.time()
+
+            for name, source_data in source_dict_article.items():
+                if name == 'youtube':
+                    name = 'yt'
+                db_source_article_name = f'missoner_article_{name}'
+                source_data_df = pd.DataFrame.from_dict(source_data, 'index',
+                                                        columns=['web_id', 'title', 'content', 'pageviews', 'landings',
+                                                                 'exits', 'bounce', 'timeOnPage'])
+                source_data_df = source_data_df.reset_index().rename(columns={'index': 'article_id'})
+                source_data_df['date'] = date_int
+                DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,
+                                              is_ssh=False)
+            source_article_end = time.time()
+
+            time_dict[web_id]['source_article'] = source_article_end - source_article_start
+
+            source_keyword_start = time.time()
+            for name, source_data in source_dict_keyword.items():
+                if name == 'youtube':
+                    name = 'yt'
+                db_source_article_name = f'missoner_keyword_{name}'
+                source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
+                source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
+                source_data_df['date'] = date_int
+                source_data_df['web_id'] = web_id
+                DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
+
+            source_keyword_end = time.time()
+            time_dict[web_id]['source_keyword'] = source_keyword_end - source_keyword_start
+
+            data_build_start = time.time()
+            ## build dict for building DataFrame
+            data_save, data_trend = {}, {}
+            i = 0
+            for key, value in keyword_dict.items():
+                data_save[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'external_source_count': value[5],
+                                'internal_source_count': value[6], 'landings': value[1], 'exits': value[2],
+                                'bounce': value[3], 'timeOnPage': value[4], 'is_cut': value[7], 'date': date_int}
+                data_trend[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'hour':hour, 'date':date_int}
+                print(f'{data_save[i]}')
+                i += 1
+            #####
+            data_save_article, data_trend_article = {}, {}
+            i = 0
+            for key, value in article_dict.items():
+                data_save_article[i] = {'web_id': web_id,'article_id':key,'title':value[1],'content':value[2],'pageviews': value[3], 'external_source_count': value[8],
+                                'internal_source_count': value[9], 'landings': value[4], 'exits': value[5],
+                                'bounce': value[6], 'timeOnPage': value[7], 'date': date_int}
+                data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date_int}
+                print(f'{data_trend_article[i]}')
+                i += 1
+            data_build_end = time.time()
+
+            time_dict[web_id]['data_build'] = data_build_end - data_build_start
+
+            trend_start = time.time()
+            ## deal with trend before replace missoner_keyword table
+            df_pageviews_last = fetch_now_keywords_by_web_id(web_id, is_UTC0=is_UTC0)
+            df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
+            df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
+            ## article
+            df_pageviews_last_article = fetch_now_article_by_web_id(web_id, is_UTC0=is_UTC0)
+            df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
+            df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
+            trend_end = time.time()
+
+            time_dict[web_id]['compute_trend'] = trend_end - trend_start
+
+            all_domain_start = time.time()
+            domain_df = get_domain_df(domain_dict,'article_id',web_id,date_int)
+            domain_df = domain_df.rename({'youtube':'yt'},axis='columns')
+            DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
                                           is_ssh=False)
-        source_article_end = time.time()
+            keyword_domain_df = get_domain_df(keyword_domain_dict, 'keyword',web_id,date_int)
+            keyword_domain_df = keyword_domain_df.rename({'youtube': 'yt'}, axis='columns')
+            DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
+                                          is_ssh=False)
+            all_domain_end = time.time()
 
-        time_dict[web_id]['source_article'] = source_article_end - source_article_start
+            time_dict[web_id]['all_domain'] = all_domain_end - all_domain_start
 
-        source_keyword_start = time.time()
-        for name, source_data in source_dict_keyword.items():
-            if name == 'youtube':
-                name = 'yt'
-            db_source_article_name = f'missoner_keyword_{name}'
-            source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
-            source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
-            source_data_df['date'] = date_int
-            source_data_df['web_id'] = web_id
-            DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
+            all_keyword_start = time.time()
+            ## build DataFrame
+            df_keyword = pd.DataFrame.from_dict(data_save, "index")
+            ## merge keyword and trend
+            df_keyword = pd.concat([df_keyword.set_index('keyword'), df_trend.set_index('keyword')], axis=1).reset_index(level=0)
+            ## select enough number of keywords
+            pageviews_array = np.array(df_keyword['pageviews']).astype('int')
+            mean_pageviews = np.mean(pageviews_array)
+            df_keyword = df_keyword.query(f"pageviews > {mean_pageviews}").fillna(0)
+            ## save keyword statistics to table: missoner_keyword
+            #keyword_list_dict = df_keyword.to_dict('records')
 
-        source_keyword_end = time.time()
-        time_dict[web_id]['source_keyword'] = source_keyword_end - source_keyword_start
+            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
+            # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
+            # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+            all_keyword_end = time.time()
+            time_dict[web_id]['all_keyword'] = all_keyword_end - all_keyword_start
+            # temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
+            # weekday = str(temp.dayofweek + 1)
 
-        data_build_start = time.time()
-        ## build dict for building DataFrame
-        data_save, data_trend = {}, {}
-        i = 0
-        for key, value in keyword_dict.items():
-            data_save[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'external_source_count': value[5],
-                            'internal_source_count': value[6], 'landings': value[1], 'exits': value[2],
-                            'bounce': value[3], 'timeOnPage': value[4], 'is_cut': value[7], 'date': date_int}
-            data_trend[i] = {'web_id': web_id, 'keyword': key, 'pageviews': value[0], 'hour':hour, 'date':date_int}
-            print(f'{data_save[i]}')
-            i += 1
-        #####
-        data_save_article, data_trend_article = {}, {}
-        i = 0
-        for key, value in article_dict.items():
-            data_save_article[i] = {'web_id': web_id,'article_id':key,'title':value[1],'content':value[2],'pageviews': value[3], 'external_source_count': value[8],
-                            'internal_source_count': value[9], 'landings': value[4], 'exits': value[5],
-                            'bounce': value[6], 'timeOnPage': value[7], 'date': date_int}
-            data_trend_article[i] = {'web_id': web_id, 'article_id': key, 'pageviews': value[3], 'hour':hour, 'date':date_int}
-            print(f'{data_trend_article[i]}')
-            i += 1
-        data_build_end = time.time()
+            week_keyword_start = time.time()
+            df_keyword['hour'] = hour
+            if int(hour) <= 1:
+                df_keyword['pageviews_hour'] = df_keyword['pageviews']
+            else:
+                df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
+                df_keyword = compute_hour_diff(df_keyword_last,df_keyword,'keyword')
+            try:
+                df_keyword['pageviews_hour'] = df_keyword.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
+            except:
+                pass
 
-        time_dict[web_id]['data_build'] = data_build_end - data_build_start
+            table_name = f"missoner_keyword_hour_{weekday}"
+            #keyword_list_dict = df_keyword.to_dict('records')
 
-        trend_start = time.time()
-        ## deal with trend before replace missoner_keyword table
-        df_pageviews_last = fetch_now_keywords_by_web_id(web_id, is_UTC0=is_UTC0)
-        df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
-        df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
-        ## article
-        df_pageviews_last_article = fetch_now_article_by_web_id(web_id, is_UTC0=is_UTC0)
-        df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
-        df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
-        trend_end = time.time()
+            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table= table_name , chunk_size=100000, is_ssh=False)
 
-        time_dict[web_id]['compute_trend'] = trend_end - trend_start
+            week_keyword_end = time.time()
 
-        all_domain_start = time.time()
-        domain_df = get_domain_df(domain_dict,'article_id',web_id,date_int)
-        domain_df = domain_df.rename({'youtube':'yt'},axis='columns')
-        DBhelper.ExecuteUpdatebyChunk(domain_df, db='dione', table='missoner_article_source_domain', chunk_size=100000,
-                                      is_ssh=False)
-        keyword_domain_df = get_domain_df(keyword_domain_dict, 'keyword',web_id,date_int)
-        keyword_domain_df = keyword_domain_df.rename({'youtube': 'yt'}, axis='columns')
-        DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
-                                      is_ssh=False)
-        all_domain_end = time.time()
+            time_dict[web_id]['week_keyword'] = week_keyword_end - week_keyword_start
+            #query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
+            #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
+            ###article
+            all_article_start = time.time()
 
-        time_dict[web_id]['all_domain'] = all_domain_end - all_domain_start
+            df_article = pd.DataFrame.from_dict(data_save_article, "index")
+            ## merge keyword and trend
+            df_article = pd.concat([df_article.set_index('article_id'), df_trend_article.set_index('article_id')], axis=1).reset_index(level=0)
+            ## select enough number of keywords
+            pageviews_array_article = np.array(df_article['pageviews']).astype('int')
+            mean_pageviews_article = np.mean(pageviews_array_article)
+            df_article = df_article.query(f"pageviews > {mean_pageviews_article}").fillna(0)
+            ## save keyword statistics to table: missoner_keyword
+            #article_list_dict = df_article.to_dict('records')
 
-        all_keyword_start = time.time()
-        ## build DataFrame
-        df_keyword = pd.DataFrame.from_dict(data_save, "index")
-        ## merge keyword and trend
-        df_keyword = pd.concat([df_keyword.set_index('keyword'), df_trend.set_index('keyword')], axis=1).reset_index(level=0)
-        ## select enough number of keywords
-        pageviews_array = np.array(df_keyword['pageviews']).astype('int')
-        mean_pageviews = np.mean(pageviews_array)
-        df_keyword = df_keyword.query(f"pageviews > {mean_pageviews}").fillna(0)
-        ## save keyword statistics to table: missoner_keyword
-        #keyword_list_dict = df_keyword.to_dict('records')
+            DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table='missoner_article', chunk_size=100000, is_ssh=False)
+            all_article_end = time.time()
 
-        DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
-        # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
-        # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
-        all_keyword_end = time.time()
-        time_dict[web_id]['all_keyword'] = all_keyword_end - all_keyword_start
-        # temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
-        # weekday = str(temp.dayofweek + 1)
+            time_dict[web_id]['all_article'] = all_article_end - all_article_start
+            #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
+            #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+            week_article_start = time.time()
+            df_article['hour'] = hour
+            if int(hour) <= 1:
+                df_article['pageviews_hour'] = df_article['pageviews']
+            else:
+                df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
+                df_article = compute_hour_diff(df_article_last,df_article,'article_id')
+            try:
+                df_article['pageviews_hour'] = df_article.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
+            except:
+                pass
 
-        week_keyword_start = time.time()
-        df_keyword['hour'] = hour
-        if int(hour) <= 1:
-            df_keyword['pageviews_hour'] = df_keyword['pageviews']
-        else:
-            df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
-            df_keyword = compute_hour_diff(df_keyword_last,df_keyword,'keyword')
-        try:
-            df_keyword['pageviews_hour'] = df_keyword.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
+            #article_list_dict = df_article.to_dict('records')
+            table_name = f"missoner_article_hour_{weekday}"
+
+            DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table=table_name, chunk_size=100000, is_ssh=False)
+            #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
+            #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
+            week_article_end = time.time()
+            time_dict[web_id]['week_article'] = week_article_end - week_article_start
+
+            keyword_article_start_1 = time.time()
+            ## save keywords <=> articles mapping, tabel: missoner_keyword_article
+            df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
+            keyword_article_end_1 = time.time()
+            #keyword_article_list_dict = df_keyword_article.to_dict('records')
+            keyword_article_start_2 = time.time()
+            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
+            keyword_article_end_2 = time.time()
+
+            keyword_article_start_3 = time.time()
+            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_1', chunk_size=100000, is_ssh=False)
+            keyword_article_end_3 = time.time()
+
+            time_dict[web_id]['keyword_article_1'] = keyword_article_end_1 - keyword_article_start_1
+            time_dict[web_id]['keyword_article_2'] = keyword_article_end_2 - keyword_article_start_2
+            time_dict[web_id]['keyword_article_3'] = keyword_article_end_3 - keyword_article_start_3
         except:
-            pass
-
-        table_name = f"missoner_keyword_hour_{weekday}"
-        #keyword_list_dict = df_keyword.to_dict('records')
-
-        DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table= table_name , chunk_size=100000, is_ssh=False)
-
-        week_keyword_end = time.time()
-
-        time_dict[web_id]['week_keyword'] = week_keyword_end - week_keyword_start
-        #query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, table_name)
-        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
-        ###article
-        all_article_start = time.time()
-
-        df_article = pd.DataFrame.from_dict(data_save_article, "index")
-        ## merge keyword and trend
-        df_article = pd.concat([df_article.set_index('article_id'), df_trend_article.set_index('article_id')], axis=1).reset_index(level=0)
-        ## select enough number of keywords
-        pageviews_array_article = np.array(df_article['pageviews']).astype('int')
-        mean_pageviews_article = np.mean(pageviews_array_article)
-        df_article = df_article.query(f"pageviews > {mean_pageviews_article}").fillna(0)
-        ## save keyword statistics to table: missoner_keyword
-        #article_list_dict = df_article.to_dict('records')
-
-        DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table='missoner_article', chunk_size=100000, is_ssh=False)
-        all_article_end = time.time()
-
-        time_dict[web_id]['all_article'] = all_article_end - all_article_start
-        #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, 'missoner_article')
-        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
-        week_article_start = time.time()
-        df_article['hour'] = hour
-        if int(hour) <= 1:
-            df_article['pageviews_hour'] = df_article['pageviews']
-        else:
-            df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
-            df_article = compute_hour_diff(df_article_last,df_article,'article_id')
-        try:
-            df_article['pageviews_hour'] = df_article.apply(lambda x: x['pageviews'] if (x['pageviews_last'] == 0 and x['pageviews_hour'] == 0 and x['pageviews'] != 0) else x['pageviews_hour'], axis=1)
-        except:
-            pass
-
-        #article_list_dict = df_article.to_dict('records')
-        table_name = f"missoner_article_hour_{weekday}"
-
-        DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table=table_name, chunk_size=100000, is_ssh=False)
-        #query_keyword = MySqlHelper.generate_update_SQLquery(df_article, table_name)
-        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
-        week_article_end = time.time()
-        time_dict[web_id]['week_article'] = week_article_end - week_article_start
-
-        keyword_article_start_1 = time.time()
-        ## save keywords <=> articles mapping, tabel: missoner_keyword_article
-        df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
-        keyword_article_end_1 = time.time()
-        #keyword_article_list_dict = df_keyword_article.to_dict('records')
-        keyword_article_start_2 = time.time()
-        DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
-        keyword_article_end_2 = time.time()
-
-        keyword_article_start_3 = time.time()
-        DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_1', chunk_size=100000, is_ssh=False)
-        keyword_article_end_3 = time.time()
-
-        time_dict[web_id]['keyword_article_1'] = keyword_article_end_1 - keyword_article_start_1
-        time_dict[web_id]['keyword_article_2'] = keyword_article_end_2 - keyword_article_start_2
-        time_dict[web_id]['keyword_article_3'] = keyword_article_end_3 - keyword_article_start_3
-        #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
-        #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
+            slack_letter.send_letter(f'流量小編_{web_id}發生錯誤')
+            #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
+            #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
 
     # ## save cross hot keywords, tabel: missoner_keyword_crossHot (compute after all web_id ran) (without trend)
     ## deal with trend before replace missoner_keyword_crossHot table
@@ -727,6 +730,7 @@ if __name__ == '__main__':
     is_UTC0 = check_is_UTC0()
     date = get_today(is_UTC0=is_UTC0)
     # date = '2021-12-05' ## None: assign today
+    slack_letter = slack_warning()
     hour_now = get_hour(is_UTC0=is_UTC0)
     temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
     weekday = str(temp.dayofweek + 1)
@@ -753,7 +757,6 @@ if __name__ == '__main__':
     t_end = time.time()
     t_spent = t_end - t_start
     print(f'finish all routine spent: {t_spent}s')
-    slack_letter = slack_warning()
     if t_spent >= 3600:
         slack_letter.send_letter(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
     slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次詳細執行時間為{str(time_dict)},{step0_time}')
