@@ -52,6 +52,5 @@ class GoogleOAuth2:
     def _create_flow(self):
         SCOPES = self.SCOPES
         CLIENT_SECRETS_PATH = self.CLIENT_SECRETS_PATH
-        flow = client.flow_from_clientsecrets(CLIENT_SECRETS_PATH, scope = SCOPES,
-                                              message = tools.message_if_missing(CLIENT_SECRETS_PATH))
+        flow = client.flow_from_clientsecrets(filename=CLIENT_SECRETS_PATH, scope = SCOPES,message = tools.message_if_missing(CLIENT_SECRETS_PATH))
         return flow

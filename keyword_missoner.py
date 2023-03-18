@@ -302,7 +302,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             time_dict[web_id]['keyword_article_2'] = keyword_article_end_2 - keyword_article_start_2
             time_dict[web_id]['keyword_article_3'] = keyword_article_end_3 - keyword_article_start_3
         except:
-            slack_letter.send_letter(f'流量小編_{web_id}發生錯誤')
+            slack_letter.send_letter_test(f'流量小編_{web_id}發生錯誤')
             #query_keyword_article = MySqlHelper.generate_update_SQLquery(df_keyword_article, 'missoner_keyword_article')
             #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword_article, keyword_article_list_dict)
 
