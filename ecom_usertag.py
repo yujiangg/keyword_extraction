@@ -4,8 +4,9 @@ from jieba_based.jieba_utils import Composer_jieba
 import jieba.analyse
 import numpy as np
 from db import DBhelper
+import re
 from basic import get_date_shift, datetime_to_str, get_today
-
+from google_similer_rank import fetch_webid_rule,fetch_url_encoder
 def clean_keyword_list(keyword_list, stopwords, stopwords_usertag):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_usertag)  ## remove stopwords, only for usertag
@@ -15,6 +16,13 @@ def clean_keyword_list(keyword_list, stopwords, stopwords_usertag):
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[a-z]{1,4}|[A-Z]{2}")  ## remove 1-4 lowercase letter and 2 Upper
     keyword_list = [keyword for keyword in keyword_list if keyword != ''] ## remove blank
     return keyword_list
+def get_report(report,web_id,web_id_to_pattern_dict):
+    report['product_id'] = report.apply(lambda x: fetch_url_encoder(web_id, x['url_now'],web_id_to_pattern_dict), axis=1)
+    report = report[report['product_id'] != '_']
+    report = report[report['product_id'] != web_id]
+    report.drop_duplicates('product_id', inplace=True)
+    return report
+
 
 def fetch_white_list_keywords():
     query = f"""SELECT name FROM BW_list where property=1"""
@@ -27,11 +35,11 @@ def fetch_white_list_keywords():
 def fetch_ecom_history(web_id,today,yesterday):
     today=str(today)
     yesterday=str(yesterday)
-    query=f"""SELECT uuid,timestamp,meta_title FROM tracker.clean_event_load
-        where web_id='{web_id}' AND date_time between '{yesterday}' and '{today}'
+    query=f"""SELECT uuid,timestamp,url_now FROM tracker.clean_event_load
+        where date_time between '{yesterday}' and '{today}' AND web_id='{web_id}'  
         """
     data = DBhelper('cdp').ExecuteSelect(query)
-    return pd.DataFrame(data,columns=['uuid','timetamp','meta_title'])
+    return pd.DataFrame(data,columns=['uuid','timetamp','url_now'])
 
 def fetch_title_description(web_id):
     query=f"""SELECT product_id,title,description,meta_title FROM item_list WHERE web_id='{web_id}' """
@@ -132,20 +140,21 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag):
     today = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
     yesterday = datetime.datetime.utcnow() + datetime.timedelta(hours=8 - 24)
     web_id_list, expired_date_list = fetch_usertag_ecom_webid_and_date()
+    web_id_to_pattern_dict = fetch_webid_rule(web_id_list)
     for web_id,expired_date_int in zip(web_id_list,expired_date_list):
         #web_id='i3fresh'
         print(f'{web_id}\n')
         expired_date = today + datetime.timedelta(expired_date_int)
         df_user_record = fetch_ecom_history(web_id, today, yesterday)
+
         if df_user_record.shape[0] == 0:
             print('no available data in cdp.cdp_user_event_record')
             continue
+        df_user_record = get_report(df_user_record,web_id,web_id_to_pattern_dict)
+
         df_item_list = fetch_title_description(web_id)
-        for i in range(len(df_item_list)):
-            if df_item_list.meta_title[i] == '_':
-                df_item_list.meta_title[i] = df_item_list.title[i]
-        df_item_list = df_item_list.drop_duplicates('meta_title')
-        data = df_user_record.merge(df_item_list, on='meta_title', how='left').dropna()
+
+        data = df_user_record.merge(df_item_list, on='product_id', how='left').dropna()
         if not data.values.tolist():
             continue
         token_df = fetch_token(web_id)
@@ -153,7 +162,7 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag):
         data['code'] = data['os_platform'] + data['is_fcm'].astype('int').astype('str')
         data_usertag, i = {}, 0
         for row in data.iterrows():
-            uuid, timetamp, meta_title,product_id ,title, description,token,_,_,code = row[-1]
+            uuid, timetamp, url,product_id ,title, description,_,token,_,_,code = row[-1]
             date = datetime.datetime.fromtimestamp(int(timetamp) / 1000).strftime("%Y-%m-%d")
             content = title + ' ' + description
             news_clean = jieba_base.filter_str(content, pattern="https:\/\/([0-9a-zA-Z.\/]*)")
@@ -183,6 +192,7 @@ if __name__ == '__main__':
     white_list = fetch_white_list_keywords()
     jieba_base.add_words(white_list)
     web_id_list,expired_date_list = fetch_usertag_ecom_webid_and_date()
+    web_id_to_pattern_dict = fetch_webid_rule(web_id_list)
     for web_id,expired_date_int in zip(web_id_list,expired_date_list):
         #web_id='i3fresh'
         print(f'{web_id}\n')

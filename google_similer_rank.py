@@ -4,7 +4,7 @@ from db import DBhelper
 import re
 import pandas as pd
 
-def fetch_url_encoder(web_id, url):
+def fetch_url_encoder(web_id, url,web_id_to_pattern_dict):
     finding = re.findall(web_id_to_pattern_dict[web_id]['pattern'].lower(), url.lower())
     find = re.findall(web_id, url)
     if not finding:
@@ -40,17 +40,17 @@ def find_similarity_product(web_id,product_id_list):
         if len(df) >= 20:
             return df
         query = f""" SELECT similarity_product_id  FROM web_push.item_similarity_table WHERE web_id ='{web_id}' and main_product_id ='{v}'  and text_similarity !=1 order by text_similarity desc limit 3 """
-        url_en = DBhelper('zz').ExecuteSelect(query)
+        url_en = DBhelper('zz',is_ssh=True).ExecuteSelect(query)
         if not url_en:
             continue
         df.loc[i] = [v] + [i[0] for i in url_en]
     return df
 
 
-def get_report(webproperty,web_id):
+def get_report(webproperty,web_id,web_id_to_pattern_dict):
     report = webproperty.query.range('today', days=-7).dimension('query', 'page').get().to_dataframe()
     report = report[report['clicks'] > 1]
-    report['product_id'] = report.apply(lambda x: fetch_url_encoder(web_id, x['page']), axis=1)
+    report['product_id'] = report.apply(lambda x: fetch_url_encoder(web_id, x['page'],web_id_to_pattern_dict), axis=1)
     report = report[report['product_id'] != '_']
     report = report[report['product_id'] != web_id]
     report.drop_duplicates('product_id', inplace=True)
@@ -58,7 +58,7 @@ def get_report(webproperty,web_id):
 
 def get_web_id_url_pair():
     query = f""" SELECT web_id,web_id_site  FROM web_push.google_search_console_id_table"""
-    data = DBhelper('zz').ExecuteSelect(query)
+    data = DBhelper('zz',is_ssh=True).ExecuteSelect(query)
     return {web_id:url for web_id,url in data}
 
 if __name__ == '__main__':
@@ -76,4 +76,4 @@ if __name__ == '__main__':
         data['web_id'] = web_id
         data['rank'] = [i+1 for i in range(len(data))]
         data['date'] = date
-        DBhelper.ExecuteUpdatebyChunk(data, db='zz', table='google_keyword_product_similer_rank', chunk_size=100000,is_ssh=False)
+        DBhelper.ExecuteUpdatebyChunk(data, db='zz', table='google_keyword_product_similer_rank', chunk_size=100000,is_ssh=True)
