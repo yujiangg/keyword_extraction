@@ -7,9 +7,10 @@ from db import DBhelper
 import re
 from basic import get_date_shift, datetime_to_str, get_today
 from google_similer_rank import fetch_webid_rule,fetch_url_encoder
-def clean_keyword_list(keyword_list, stopwords, stopwords_usertag):
+def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
-    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_usertag)  ## remove stopwords, only for usertag
+    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
+    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwotds_db)
     keyword_list = Composer_jieba().filter_quantifier(keyword_list)  ## remove number+quantifier, ex: 5.1萬
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9]{2}")  ## remove 2 digit number
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9.]*")  ## remove floating
@@ -136,7 +137,7 @@ def update_ec_usertag_report(web_id):
     # print(df_freq_token)
     DBhelper.ExecuteUpdatebyChunk(df_freq_token, db='missioner', table='usertag_report', chunk_size=100000,is_ssh=True)
     return df_freq_token
-def update_ec_usertag(jieba_base,stopwords,stopwords_usertag):
+def update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set):
     today = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
     yesterday = datetime.datetime.utcnow() + datetime.timedelta(hours=8 - 24)
     web_id_list, expired_date_list = fetch_usertag_ecom_webid_and_date()
@@ -169,6 +170,7 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag):
             ## pattern for removing symbol, -,+~.
             news_clean = jieba_base.filter_symbol(news_clean)
             keyword_list = jieba.analyse.extract_tags(news_clean, topK=80)
+            keyword_list = [i for i in keyword_list if i in all_dict_set]
             keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_usertag)[:8]
             keywords = ','.join(keyword_list)  ## add keywords
             ## for table, usertag_ecom
