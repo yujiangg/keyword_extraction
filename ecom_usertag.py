@@ -7,10 +7,9 @@ from db import DBhelper
 import re
 from basic import get_date_shift, datetime_to_str, get_today
 from google_similer_rank import fetch_webid_rule,fetch_url_encoder
-def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
+def clean_keyword_list(keyword_list, stopwords, stopwords_missoner):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
-    keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwotds_db)
     keyword_list = Composer_jieba().filter_quantifier(keyword_list)  ## remove number+quantifier, ex: 5.1萬
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9]{2}")  ## remove 2 digit number
     keyword_list = Composer_jieba().filter_str_list(keyword_list, pattern="[0-9.]*")  ## remove floating
@@ -43,9 +42,9 @@ def fetch_ecom_history(web_id,today,yesterday):
     return pd.DataFrame(data,columns=['uuid','timetamp','url_now'])
 
 def fetch_title_description(web_id):
-    query=f"""SELECT product_id,title,description,meta_title FROM item_list WHERE web_id='{web_id}' """
+    query=f"""SELECT url,title,description,meta_title FROM item_list WHERE web_id='{web_id}' """
     data = DBhelper('rhea_web_push', is_ssh=True).ExecuteSelect(query)
-    return pd.DataFrame(data,columns=['product_id','title','description','meta_title'])
+    return pd.DataFrame(data,columns=['url_now','title','description','meta_title'])
 
 def count_unique(data_dict):
     for key, value in data_dict.items():
@@ -154,6 +153,7 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set):
         df_user_record = get_report(df_user_record,web_id,web_id_to_pattern_dict)
 
         df_item_list = fetch_title_description(web_id)
+        df_item_list = get_report(df_item_list, web_id, web_id_to_pattern_dict)
 
         data = df_user_record.merge(df_item_list, on='product_id', how='left').dropna()
         if not data.values.tolist():
@@ -163,7 +163,7 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set):
         data['code'] = data['os_platform'] + data['is_fcm'].astype('int').astype('str')
         data_usertag, i = {}, 0
         for row in data.iterrows():
-            uuid, timetamp, url,product_id ,title, description,_,token,_,_,code = row[-1]
+            uuid, timetamp, url,product_id ,_,title, description,_,token,_,_,code = row[-1]
             date = datetime.datetime.fromtimestamp(int(timetamp) / 1000).strftime("%Y-%m-%d")
             content = title + ' ' + description
             news_clean = jieba_base.filter_str(content, pattern="https:\/\/([0-9a-zA-Z.\/]*)")
