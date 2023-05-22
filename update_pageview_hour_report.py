@@ -47,7 +47,11 @@ class pageveiw_hour:
         return web_id_to_pattern_dict
 
     def fetch_url_encoder(self, web_id, url):
-        finding = re.findall(self.web_id_to_pattern_dict[web_id]['pattern'], url)
+        try:
+            finding = re.findall(self.web_id_to_pattern_dict[web_id]['pattern'], url)
+            print(f'{web_id}_no_rule')
+        except:
+            return '_'
         find = re.findall(web_id, url)
         if not finding:
             if find:
