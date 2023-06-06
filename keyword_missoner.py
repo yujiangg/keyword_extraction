@@ -298,6 +298,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_1', chunk_size=100000, is_ssh=False)
             keyword_article_end_3 = time.time()
 
+            df_keyword_article['dateint'] = date_int
+            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_new', chunk_size=100000, is_ssh=False)
+
+
             time_dict[web_id]['keyword_article_1'] = keyword_article_end_1 - keyword_article_start_1
             time_dict[web_id]['keyword_article_2'] = keyword_article_end_2 - keyword_article_start_2
             time_dict[web_id]['keyword_article_3'] = keyword_article_end_3 - keyword_article_start_3
