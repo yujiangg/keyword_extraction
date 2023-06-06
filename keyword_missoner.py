@@ -101,7 +101,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                     if keyword not in keyword_domain_dict.keys():
                         keyword_domain_dict[keyword] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
                                                        'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0,'other': 0}
-                    if dm in source_domain_mapping:
+                    if dm == web_id:
                         keyword_domain_dict[keyword]['internal'] += int(row['pageviews'])
                     elif dm in keyword_domain_dict[keyword].keys():
                         keyword_domain_dict[keyword][dm] += int(row['pageviews'])
@@ -611,7 +611,7 @@ def fetch_missoner_web_id_list(group):
 
 @timing
 def fetch_source_domain_mapping(web_id):
-    query = f"SELECT domain FROM source_domain_mapping where web_id='{web_id}'"
+    query = f"SELECT web_id FROM dione.missoner_web_id_table WHERE web_id='{web_id}'"
     print(query)
     data = MySqlHelper('dione').ExecuteSelect(query)
     source_domain_mapping = [d[0] for d in data]
