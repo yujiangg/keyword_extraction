@@ -78,13 +78,13 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
                 params_data = np.array(row[['web_id', 'title', 'content']])
                 params_all = np.append(params_data, params)
-                dm = row['source_domain'].lower()
+                dm = row['source_domain']
                 article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)
                 ## separate keyword_list to build dictionary ##
                 if row['article_id'] not in domain_dict.keys():
                     domain_dict[row['article_id']] = {'internal': 0, 'google': 0, 'facebook': 0, 'yahoo': 0, 'likr': 0,
                                                       'xuite': 0, 'youtube': 0, 'line': 0, 'feed_related': 0,'dcard':0,'ptt':0,'edm':0 ,'other': 0}
-                if dm in source_domain_mapping:
+                if dm == web_id:
                     domain_dict[row['article_id']]['internal'] += int(row['pageviews'])
                 elif dm in domain_dict[row['article_id']].keys():
                     domain_dict[row['article_id']][dm] += int(row['pageviews'])
