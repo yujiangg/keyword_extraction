@@ -216,6 +216,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             #keyword_list_dict = df_keyword.to_dict('records')
 
             DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
+            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword_new', chunk_size=100000,is_ssh=False)
             # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
             # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
             all_keyword_end = time.time()
