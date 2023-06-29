@@ -48,12 +48,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
             step1_start = time.time()
             ## fetch source domain mapping
-            source_domain_mapping = fetch_source_domain_mapping(web_id)
-            source_domain_mapping = list(map(lambda x: x.lower(), source_domain_mapping))
+            source_domain_mapping = [web_id]
             black_list = fetch_black_list_keywords(web_id)
             #while_list = fetch_while_list_keywords(web_id)
             ## fetch user_based popular article
-            df_hot = fetch_df_hot(web_id,web_id_dict,n,is_UTC0=is_UTC0)
+            df_hot = fetch_df_hot(web_id,web_id_dict,n,date=date,is_UTC0=is_UTC0)
 
             step1_end = time.time()
 
@@ -226,7 +225,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
             week_keyword_start = time.time()
             df_keyword['hour'] = hour
-            if int(hour) <= 1:
+            if int(hour) < 1:
                 df_keyword['pageviews_hour'] = df_keyword['pageviews']
             else:
                 df_keyword_last = fetch_last_hour_article(web_id, hour,'keyword','keyword', weekday,date_int)
@@ -267,7 +266,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             #MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, article_list_dict)
             week_article_start = time.time()
             df_article['hour'] = hour
-            if int(hour) <= 1:
+            if int(hour) < 1:
                 df_article['pageviews_hour'] = df_article['pageviews']
             else:
                 df_article_last = fetch_last_hour_article(web_id, hour,'article','article_id', weekday,date_int)
@@ -733,13 +732,18 @@ def collect_article_pageviews_by_source(article_dict,row,source_domain_mapping,p
 if __name__ == '__main__':
     t_start = time.time()
     is_UTC0 = check_is_UTC0()
+    utc_now = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+    utc_date, utc_hour = utc_now.strftime('%Y-%m-%d,%H').split(',')
+    tw_now = utc_now + datetime.timedelta(hours=8)
+    tw_date, tw_hour = tw_now.strftime('%Y-%m-%d,%H').split(',')
     date = get_today(is_UTC0=is_UTC0)
     # date = '2021-12-05' ## None: assign today
     slack_letter = slack_warning()
+    tw_hour = int(tw_hour)
     hour_now = get_hour(is_UTC0=is_UTC0)
-    temp = pd.Timestamp((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
+    temp = pd.Timestamp((datetime.datetime.utcnow() - datetime.timedelta(hours=1) + datetime.timedelta(hours=8)).strftime('%Y-%m-%d'))
     weekday = str(temp.dayofweek + 1)
-    if (hour_now == 0):
+    if (tw_hour == 0):
         ## routine
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
         table_name = f"missoner_keyword_hour_{weekday}"
@@ -755,7 +759,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     group = args.group
 
-    time_dict,step0_time = update_missoner_three_tables(weekday=weekday,hour = hour_now,date=date, n=5000,group=group,is_UTC0=is_UTC0)
+    time_dict,step0_time = update_missoner_three_tables(weekday=weekday,hour = tw_hour,date=tw_date, n=5000,group=group,is_UTC0=is_UTC0)
 
     print(f'routine to update every hour, hour: {hour_now}')
 
