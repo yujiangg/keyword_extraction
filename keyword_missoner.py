@@ -126,6 +126,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 if name == 'youtube':
                     name = 'yt'
                 db_source_article_name = f'missoner_article_{name}'
+
                 source_data_df = pd.DataFrame.from_dict(source_data, 'index',
                                                         columns=['web_id', 'title', 'content', 'pageviews', 'landings',
                                                                  'exits', 'bounce', 'timeOnPage'])
@@ -141,9 +142,14 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             for name, source_data in source_dict_keyword.items():
                 if name == 'youtube':
                     name = 'yt'
+                last_keyword_pageviews = fetch_now_source_keywords_by_web_id(web_id,date_int,name)
                 db_source_article_name = f'missoner_keyword_{name}'
                 source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
                 source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
+                df_trend = compute_trend_from_df(last_keyword_pageviews,source_data_df)
+                source_data_df = pd.concat([source_data_df.set_index('keyword'), df_trend.set_index('keyword')],axis=1).reset_index(level=0)
+                source_data_df.dropna(axis=0, subset=["pageviews"],inplace=True)
+                source_data_df = source_data_df.fillna(0)
                 source_data_df['date'] = date_int
                 source_data_df['web_id'] = web_id
                 DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
@@ -437,7 +443,7 @@ def compute_trend_from_df(df_pageviews_last, df_pageviews_now):
     ## make pageviews to be int32 and math operation by index:keyword
     df_pageviews_last = df_pageviews_last[['keyword', 'pageviews']].set_index('keyword').astype({'pageviews': 'int32'})
     df_pageviews_now = df_pageviews_now[['keyword', 'pageviews']].set_index('keyword').astype({'pageviews': 'int32'})
-    df_trend = ((df_pageviews_now - df_pageviews_last)/df_pageviews_now*100).fillna(0).rename(columns = {'pageviews': 'trend'})
+    df_trend = ((df_pageviews_now - df_pageviews_last)/df_pageviews_last).fillna(0).rename(columns = {'pageviews': 'trend'})
 
     df_trend = pd.concat([df_trend, df_pageviews_last], axis=1).rename(columns = {'pageviews': 'pageviews_last'})
     df_trend['keyword'] = df_trend.index
@@ -649,9 +655,14 @@ def fetch_hot_articles(web_id, n=50, date=None, is_UTC0=False): # default get to
 
 ## get latest keyword data
 @timing
-def fetch_now_keywords_by_web_id(web_id, is_UTC0=False):
-    date_int = date2int(get_today(is_UTC0=is_UTC0))
+def fetch_now_keywords_by_web_id(web_id,date_int ,is_UTC0=False):
     query = f"SELECT keyword, pageviews FROM missoner_keyword WHERE date={date_int} and web_id='{web_id}'"
+    data = MySqlHelper('dione').ExecuteSelect(query)
+    df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
+    return df
+
+def fetch_now_source_keywords_by_web_id(web_id,date_int ,source,is_UTC0=False):
+    query = f"SELECT keyword, pageviews FROM missoner_keyword_{source} WHERE date={date_int} and web_id='{web_id}'"
     data = MySqlHelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
@@ -768,4 +779,5 @@ if __name__ == '__main__':
     print(f'finish all routine spent: {t_spent}s')
     if t_spent >= 3600:
         slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
-    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次詳細執行時間為{str(time_dict)},{step0_time}')
+    #slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,本次詳細執行時間為{str(time_dict)},{step0_time}')
+    slack_letter.send_letter_test(f'流量小編_{group},{date.strftime("%Y-%m-%d")}/{hour_now}時,執行成功')
