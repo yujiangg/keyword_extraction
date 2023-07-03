@@ -11,6 +11,7 @@ import pandas as pd
 import re
 from tqdm import tqdm
 import hashlib
+from urllib import parse
 from slackwarningletter import slack_warning
 
 class pageveiw_hour:
@@ -22,6 +23,8 @@ class pageveiw_hour:
 
         self.awsS3 = AmazonS3('elephants3')
         self.web_id_list = set(self.fetch_missoner_web_id_list())
+        self.ecom_web_id_list = set(self.fetch_missoner_ecom_web_id_list())
+        self.source_domain_mapping = self.fetch_source_domain_mapping()
         self.web_id_to_pattern_dict = self.fetch_webid_rule(self.web_id_list)
         self.domain_dict = self.fetch_domain_dict()
         self.domain_list = self.get_domain_list()
@@ -36,6 +39,11 @@ class pageveiw_hour:
         qurey = "SELECT web_id FROM missoner_web_id_table WHERE enable = 1"
         data = DBhelper('dione').ExecuteSelect(qurey)
         return [i[0] for i in data]
+    def fetch_missoner_ecom_web_id_list(self):
+        qurey = "SELECT web_id FROM dione.missoner_web_id_table WHERE web_id_type = 1 and enable = 1"
+        data = DBhelper('dione').ExecuteSelect(qurey)
+        return [i[0] for i in data]
+
 
     def fetch_webid_rule(self, web_id_list):
         qurey = f"""SELECT web_id, url_split, pattern, url_modify_rule, filter_rule, condition_rule, signature_rule FROM web_id_url_encoder_rule WHERE web_id IN ('{"','".join(web_id_list)}')"""
@@ -47,6 +55,8 @@ class pageveiw_hour:
         return web_id_to_pattern_dict
 
     def fetch_url_encoder(self, web_id, url):
+        if web_id in self.ecom_web_id_list:
+            url = parse.unquote(url)
         try:
             finding = re.findall(self.web_id_to_pattern_dict[web_id]['pattern'], url)
         except:
@@ -66,8 +76,8 @@ class pageveiw_hour:
             else:
                 return '_'
             return '_'
-        k = 60 if web_id != 'draimior' else 90
-        if len(signature.encode()) > k:
+
+        if len(signature.encode()) > 60:
             encoder = hashlib.sha256()
             encoder.update((signature).encode())
             ecoded_signature = web_id + '_' + encoder.hexdigest()
@@ -75,17 +85,16 @@ class pageveiw_hour:
             ecoded_signature = web_id + '_' + signature
         return ecoded_signature
 
-    def fetch_source_domain_mapping(self, web_id):
-        query = f"SELECT website_web_id FROM missoner_web_id_table where web_id='{web_id}' and enable ='1'"
-        print(query)
+    def fetch_source_domain_mapping(self):
+        query = f"SELECT web_id,website_web_id FROM missoner_web_id_table where enable ='1'"
         data = DBhelper('dione').ExecuteSelect(query)
-        source_domain_mapping = [d[0] for d in data]
+        source_domain_mapping = {web_id:website_web_id for web_id,website_web_id in data}
         return source_domain_mapping
 
     def fetch_domain_dict(self):
         domain_dict = {}
         for web_id in self.web_id_list:
-            domain_dict[web_id] = self.fetch_source_domain_mapping(web_id)
+            domain_dict[web_id] = self.source_domain_mapping[web_id]
         return domain_dict
 
     def get_domain_list(self):
