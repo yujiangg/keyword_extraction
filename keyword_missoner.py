@@ -184,7 +184,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
             trend_start = time.time()
             ## deal with trend before replace missoner_keyword table
-            df_pageviews_last = fetch_now_keywords_by_web_id(web_id, is_UTC0=is_UTC0)
+            df_pageviews_last = fetch_now_keywords_by_web_id(web_id,date_int,is_UTC0=is_UTC0)
             df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
             df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
             ## article
