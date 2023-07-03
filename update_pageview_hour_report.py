@@ -66,7 +66,8 @@ class pageveiw_hour:
             else:
                 return '_'
             return '_'
-        if len(signature.encode()) > 60:
+        k = 60 if web_id != 'draimior' else 90
+        if len(signature.encode()) > k:
             encoder = hashlib.sha256()
             encoder.update((signature).encode())
             ecoded_signature = web_id + '_' + encoder.hexdigest()
