@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import time
 import datetime
+import re
 import pickle
 from basic.decorator import timing
 from jieba_based.jieba_utils import Composer_jieba
@@ -380,6 +381,9 @@ def fetch_pageview_hot_df(web_id,dateint,n):
     data = DBhelper('dione').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','source_domain','pageviews', 'landings', 'exits', 'bounce', 'timeOnPage', 'date']
     df_hot = pd.DataFrame(data=data, columns=columns)
+    if web_id == 'kfan':
+        df_hot['article_id'] = df_hot.apply(lambda x: x.article_id.split('&')[0], axis=1)
+        df_hot = df_hot.groupby(['web_id','article_id','source_domain','date'])[['pageviews','landings','exits','bounce','timeOnPage']].sum().reset_index()
     return df_hot
 
 def fetch_article_df(web_id):
@@ -405,6 +409,9 @@ def fetch_ecom_df(web_id):
     columns = ['web_id', 'article_id','title','content']
     df_hot = pd.DataFrame(data=data, columns=columns)
     df_hot['keywords'] ='_'
+    if web_id =='kfan':
+        df_hot['article_id'] = df_hot.apply(lambda x:x.article_id.split('&')[0],axis=1)
+        df_hot.drop_duplicates(['article_id'],inplace=True)
     return df_hot
 
 
