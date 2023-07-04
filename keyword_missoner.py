@@ -430,9 +430,9 @@ def update_crossHot_trend_table(df_hot_keyword, hour):
         data_trend[i] = {'web_id':'crossHot', 'keyword':data['keyword'], 'pageviews':data['pageviews'],
                         'date':data['date'], 'hour':hour}
     df_trend = pd.DataFrame.from_dict(data_trend, "index")
-    query = MySqlHelper.generate_update_SQLquery(df_trend, 'missoner_keyword_trend')
+    query = DBhelper.generate_update_SQLquery(df_trend, 'missoner_keyword_trend')
     trend_list_dict = df_trend.to_dict('records')
-    MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query, trend_list_dict)
+    DBhelper('dione', is_ssh=False).ExecuteUpdate(query, trend_list_dict)
     return df_trend
 def compute_hour_diff(df_article_last,df_article,name):
     diff = df_article[[name, 'pageviews']].set_index(name).astype({'pageviews': 'int32'}) - df_article_last.set_index(name).astype({'pageviews': 'int32'})
@@ -510,7 +510,7 @@ def fetch_crossHot_keyword(date_int):
             GROUP BY k.keyword
             """
     print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df_keyword_crossHot = pd.DataFrame(data, columns=['keyword', 'pageviews', 'external_source_count',
                                                  'internal_source_count', 'mentionedArticles',
                                                  'landings', 'exits', 'bounce', 'timeOnPage'])
@@ -558,7 +558,7 @@ def fetch_crossHot_keyword_domain(date_int):
             GROUP BY k.keyword
             """
     print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df_keyword_domain_crossHot = pd.DataFrame(data, columns=['keyword', 'pageviews', 'internal',
                                                  'google', 'facebook',
                                                  'yahoo', 'likr','xuite' ,'yt', 'LINE','feed_related','other','mentionedArticles'])
@@ -569,7 +569,7 @@ def fetch_crossHot_keyword_domain(date_int):
 def fetch_now_crossHot_keywords(date_int):
     # date_int = date2int(get_today(is_UTC0=is_UTC0))
     query = f"SELECT keyword, pageviews FROM missoner_keyword_crossHot WHERE date={date_int}"
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 def fetch_black_list_keywords(web_id):
@@ -605,7 +605,7 @@ def test_speed():
                     AND l.web_id = 'ctnews'
             """
     print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     return data
 
 
@@ -619,7 +619,7 @@ def fetch_missoner_web_id_list(group):
 def fetch_source_domain_mapping(web_id):
     query = f"SELECT web_id FROM dione.missoner_web_id_table WHERE web_id='{web_id}'"
     print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     source_domain_mapping = [d[0] for d in data]
     return source_domain_mapping
 
@@ -647,7 +647,7 @@ def fetch_hot_articles(web_id, n=50, date=None, is_UTC0=False): # default get to
                 ORDER BY pageviews DESC LIMIT {n}
             """
     print(query)
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     columns = ['web_id', 'article_id', 'title', 'content', 'keywords', 'source_domain', 'pageviews', 'landings', 'exits', 'bounce', 'timeOnPage', 'date']
     df_hot = pd.DataFrame(data=data, columns=columns)
     return df_hot
@@ -657,27 +657,27 @@ def fetch_hot_articles(web_id, n=50, date=None, is_UTC0=False): # default get to
 @timing
 def fetch_now_keywords_by_web_id(web_id,date_int ,is_UTC0=False):
     query = f"SELECT keyword, pageviews FROM missoner_keyword WHERE date={date_int} and web_id='{web_id}'"
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
 def fetch_now_source_keywords_by_web_id(web_id,date_int ,source,is_UTC0=False):
     query = f"SELECT keyword, pageviews FROM missoner_keyword_{source} WHERE date={date_int} and web_id='{web_id}'"
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
 def fetch_now_article_by_web_id(web_id, is_UTC0=False):
     date_int = date2int(get_today(is_UTC0=is_UTC0))
     query = f"SELECT article_id, pageviews FROM missoner_article WHERE date={date_int} and web_id='{web_id}'"
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['article_id', 'pageviews'])
     return df
 
 def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     hour = hour - 1
     query = f"SELECT {col}, pageviews FROM missoner_{aok}_hour_{week} WHERE hour='{hour}' and web_id='{web_id}' and date='{date}'"
-    data = MySqlHelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=[col, 'pageviews'])
     return df
 
