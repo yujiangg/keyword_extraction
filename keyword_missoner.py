@@ -217,7 +217,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             ## select enough number of keywords
             pageviews_array = np.array(df_keyword['pageviews']).astype('int')
             mean_pageviews = np.mean(pageviews_array)
-            df_keyword = df_keyword.query(f"pageviews > {mean_pageviews}").fillna(0)
+            #df_keyword = df_keyword.query(f"pageviews > {mean_pageviews}").fillna(0)
             ## save keyword statistics to table: missoner_keyword
             #keyword_list_dict = df_keyword.to_dict('records')
 
