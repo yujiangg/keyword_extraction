@@ -118,7 +118,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
             #date = date_int
             #hour = get_hour(is_UTC0=is_UTC0)
-            if not keyword_dict or article_dict:
+            if not keyword_dict or not article_dict:
                 continue
             key_cut_end = time.time()
             time_dict[web_id]['key_cut_time'] = key_cut_end - key_cut_start
