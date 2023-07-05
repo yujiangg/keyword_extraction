@@ -118,6 +118,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 print(f"index: {index},article_id:{row['article_id']} ,keywords: {keywords}")
             #date = date_int
             #hour = get_hour(is_UTC0=is_UTC0)
+            if not keyword_dict or article_dict:
+                continue
             key_cut_end = time.time()
             time_dict[web_id]['key_cut_time'] = key_cut_end - key_cut_start
 
@@ -696,6 +698,8 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_l
     keywords = row['keywords']
     #news = row['title'] + ' ' + row['content']
     news = row['title']
+    if (news == '') | (news == '_') | len(news) < 2:
+        news = row['content']
     news_clean = jieba_base.filter_str(news, pattern="https:\/\/([0-9a-zA-Z.\/]*)")  ## pattern for https
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_') | len(keywords.split(',')) < 2:
