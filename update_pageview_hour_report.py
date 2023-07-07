@@ -128,7 +128,7 @@ class pageveiw_hour:
         for o in tqdm(obj):
             k = json.loads(self.awsS3.Read(o.key))
             for i in k:
-                if i['web_id'] not in self.web_id_list:
+                if i.get('web_id') not in self.web_id_list:
                     continue
                 if 'behavior_type' not in i:
                     continue
