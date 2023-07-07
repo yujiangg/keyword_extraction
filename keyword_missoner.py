@@ -79,6 +79,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 params_data = np.array(row[['web_id', 'title', 'content']])
                 params_all = np.append(params_data, params)
                 dm = row['source_domain']
+                url = row['url']
                 article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)
                 ## separate keyword_list to build dictionary ##
                 if row['article_id'] not in domain_dict.keys():
@@ -94,7 +95,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
                 for keyword in keyword_list:
                     ## keyword and articles mapping, for table, missoner_keyword_article
-                    dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut}
+                    dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut,'url':url}
                     i += 1
                     ## compute pageviews by external and internal sources, for table, missoner_keyword
                     keyword_dict = collect_pageviews_by_source(keyword_dict, keyword, row, source_domain_mapping, params, is_cut,dm)
@@ -302,11 +303,11 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             keyword_article_end_1 = time.time()
             #keyword_article_list_dict = df_keyword_article.to_dict('records')
             keyword_article_start_2 = time.time()
-            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
+            #DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article', chunk_size=100000, is_ssh=False)
             keyword_article_end_2 = time.time()
 
             keyword_article_start_3 = time.time()
-            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_1', chunk_size=100000, is_ssh=False)
+            #DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_1', chunk_size=100000, is_ssh=False)
             keyword_article_end_3 = time.time()
 
             df_keyword_article['dateint'] = date_int
@@ -391,26 +392,26 @@ def fetch_pageview_hot_df(web_id,dateint,n):
     return df_hot
 
 def fetch_article_df(web_id):
-    qurey = f"SELECT web_id,signature,title,content,keywords From news_table where web_id = '{web_id}'"
+    qurey = f"SELECT web_id,signature,title,content,keywords,url From news_table where web_id = '{web_id}'"
     data = DBhelper('jupiter_new').ExecuteSelect(qurey)
-    columns = ['web_id', 'article_id','title','content', 'keywords']
+    columns = ['web_id', 'article_id','title','content', 'keywords','url']
     df_hot = pd.DataFrame(data=data, columns=columns)
     return df_hot
 
 
 
 def fetch_blog_df(web_id):
-    qurey = f"SELECT web_id,signature,title,content From blog_table where web_id = '{web_id}'"
+    qurey = f"SELECT web_id,signature,title,content,url From blog_table where web_id = '{web_id}'"
     data = DBhelper('jupiter_new').ExecuteSelect(qurey)
-    columns = ['web_id', 'article_id','title','content']
+    columns = ['web_id', 'article_id','title','content','url']
     df_hot = pd.DataFrame(data=data, columns=columns)
     df_hot['keywords'] ='_'
     return df_hot
 
 def fetch_ecom_df(web_id):
-    qurey = f"SELECT web_id,signature,title,content From ecom_table where web_id = '{web_id}'"
+    qurey = f"SELECT web_id,signature,title,content,url From ecom_table where web_id = '{web_id}'"
     data = DBhelper('jupiter_new').ExecuteSelect(qurey)
-    columns = ['web_id', 'article_id','title','content']
+    columns = ['web_id', 'article_id','title','content','url']
     df_hot = pd.DataFrame(data=data, columns=columns)
     df_hot['keywords'] ='_'
     if web_id =='kfan':
