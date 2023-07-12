@@ -1,3 +1,5 @@
+import collections
+
 import jieba
 import jieba.analyse
 import numpy as np
@@ -37,6 +39,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     all_dict_set = fetch_all_dict(jieba_base)
     #black_list = fetch_black_list_keywords()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
+
+    black_dict = fetch_black_list_keywords()
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
     #  if df_keyword_crossHot_last.shape[0]==0:
@@ -50,7 +54,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             step1_start = time.time()
             ## fetch source domain mapping
             source_domain_mapping = [web_id]
-            black_list = fetch_black_list_keywords(web_id)
+            black_list = black_dict[web_id]
             #while_list = fetch_while_list_keywords(web_id)
             ## fetch user_based popular article
             df_hot = fetch_df_hot(web_id,web_id_dict,n,date=date,is_UTC0=is_UTC0)
@@ -584,12 +588,13 @@ def fetch_now_crossHot_keywords(date_int):
     data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
-def fetch_black_list_keywords(web_id):
-    query = f"""SELECT name FROM BW_list where property=0 and web_id = '{web_id}'"""
-    print(query)
+def fetch_black_list_keywords():
+    black_dict = collections.defaultdict(list)
+    query = f"""SELECT name,web_id FROM BW_list where property=0"""
     data = DBhelper('dione').ExecuteSelect(query)
-    black_list = [d[0] for d in data]
-    return black_list
+    for key,web_id in data:
+        black_dict[web_id].append(key)
+    return black_dict
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
