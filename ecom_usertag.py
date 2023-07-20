@@ -67,7 +67,7 @@ def fetch_token(web_id):
     data = pd.DataFrame(data, columns=['token','uuid','os_platform','is_fcm'])
     return data
 
-def fetch_usertag(web_id, table='usertag'):
+def fetch_usertag(web_id,table='usertag'):
     date_now = datetime_to_str(get_today())
     query = f"SELECT uuid, token, usertag FROM {table} where expired_date>=CURDATE() and web_id='{web_id}'"
     # query = f"SELECT uuid, token, usertag FROM usertag where web_id='{web_id}'"
@@ -85,9 +85,9 @@ def count_unique(data_dict):
         data_dict[key] = len(set(value))
     return data_dict
 
-def update_ec_usertag_report(web_id):
+def update_ec_usertag_report(web_id,table_name):
     expired_date_s = get_date_shift(days=-4, to_str=True, is_UTC0=False)
-    df_map = fetch_usertag(web_id)
+    df_map = fetch_usertag(web_id,table_name)
     if len(df_map) == 0:
         return
     usertag_dict, token_dict, uuid_dict = {}, {}, {}
@@ -179,8 +179,12 @@ def update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set):
                 i += 1
         df_usertag = pd.DataFrame.from_dict(data_usertag, "index")
         # print(df_usertag)
+
+        DBhelper.ExecuteUpdatebyChunk(df_usertag, db='missioner', table='usertag_new', chunk_size=100000, is_ssh=True)
+        update_ec_usertag_report(web_id,'usertag_new')
+
         DBhelper.ExecuteUpdatebyChunk(df_usertag, db='missioner', table='usertag', chunk_size=100000, is_ssh=True)
-        update_ec_usertag_report(web_id)
+        update_ec_usertag_report(web_id,'usertag')
     return df_usertag
 
 if __name__ == '__main__':
