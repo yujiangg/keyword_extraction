@@ -3,7 +3,7 @@ import searchconsole
 from db import DBhelper
 import re
 import pandas as pd
-
+import hashlib
 def fetch_url_encoder(web_id, url,web_id_to_pattern_dict):
     finding = re.findall(web_id_to_pattern_dict[web_id]['pattern'].lower(), url.lower())
     find = re.findall(web_id, url)
