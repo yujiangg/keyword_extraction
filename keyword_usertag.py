@@ -125,6 +125,7 @@ def main_update_subscriber_usertag(web_id, date, is_UTC0, jump2gcp, expired_day,
         print('no valid data in dione.subscriber_browse_record')
         return pd.DataFrame(), pd.DataFrame()
     token_df = fetch_token(web_id)
+    print('token_df_ok!')
     data = data.merge(token_df, on='uuid', how='left').dropna()
     n_data = len(data)
     if n_data == 0:
