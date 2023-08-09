@@ -76,11 +76,16 @@ def fetch_browse_record_yesterday_join(web_id, is_df=False, is_UTC0=False):
         return df
     else:
         return data
+def str_to_timetamp(s):
+    return datetime.datetime.timestamp(datetime.datetime.strptime(s, '%Y-%m-%d %H:%M:%S'))
 
 @timing
 def fetch_browse_record_join(web_id, date, is_df=False):
     date_start = to_datetime(date)
     date_end = date_start - datetime.timedelta(days=-1, seconds=1)  ## pixnet, upmedia, ctnews, cmoney,
+    date_end = str_to_timetamp(str(date_end))
+    date_start = str_to_timetamp(str(date_start))
+
     query = \
         f"""
             SELECT 
@@ -91,11 +96,11 @@ def fetch_browse_record_join(web_id, date, is_df=False):
             l.content,
             l.keywords
         FROM
-            subscriber_browse_record s
+            subscriber_browse_record_new s
                 INNER JOIN
             article_list l ON s.article_id = l.signature                
                 AND s.web_id = '{web_id}'                
-                AND s.click_time BETWEEN '{date_start}' AND '{date_end}'
+                AND s.timetamps BETWEEN '{date_start}' AND '{date_end}'
                 AND l.web_id = '{web_id}'        
         """
     print(query)
@@ -212,8 +217,9 @@ if __name__ == '__main__':
 
 
     # connect to server
-    config = DBhelper._read_config()["SSH"]["missoner"]
+    config = DBhelper._read_config()["mysql"]["missoner_screen"]
     con = paramiko.SSHClient()
     con.load_system_host_keys()
-    con.connect(config["HOST"], username=config["USER"], password=config["PASSWORD"])
+
+    con.connect(config["MYSQL_HOST"], username=config["MYSQL_USER"], password=config["MYSQL_PASSWORD"])
     stdin, stdout, stderr = con.exec_command("screen -dmS wrapping_token bash -c 'python3 /var/www/html/cron_job/process_ta_token_json_csv.py'")
