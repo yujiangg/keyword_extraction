@@ -26,7 +26,7 @@ class usertag_only_uuid():
         self.fetch_webid_rule_usertag(list(self.usertag_web_id_dict.keys()))
     def fetch_missoner_web_id_dict(self):
         qurey = f"SELECT web_id FROM ecom_web_id_table x WHERE uuid_enable = 1"
-        data = DBhelper('missioner').ExecuteSelect(qurey)
+        data = DBhelper('missioner',is_ssh=True).ExecuteSelect(qurey)
         return {i[0]:1 for i in data}
 
     def str_to_timetamp(self,s):
@@ -174,7 +174,7 @@ class usertag_only_uuid():
                     keywords, keyword_list, is_cut = self.generate_keyword_list(row)
                     for keyword in keyword_list:
                         df.loc[len(df)] = [web_id,row['uuid'],keyword,row['product_id'],row['timetamps'],self.today]
-                DBhelper.ExecuteUpdatebyChunk(df, db='missioner', table='usertag_uuid_new', chunk_size=100000,is_ssh=False)
+                DBhelper.ExecuteUpdatebyChunk(df, db='missioner', table='usertag_uuid_new', chunk_size=100000,is_ssh=True)
 
 if __name__ == '__main__':
     usertag_uuid = usertag_only_uuid()
