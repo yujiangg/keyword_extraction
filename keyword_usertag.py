@@ -7,7 +7,7 @@ from keyword_usertag_report import keyword_usertag_report, delete_expired_rows
 import jieba.analyse
 import paramiko
 from ecom_usertag import update_ec_usertag
-from keyword_missoner import fetch_all_dict
+from keyword_missoner import fetch_all_dict,fetch_while_list_keywords
 
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
@@ -195,7 +195,8 @@ if __name__ == '__main__':
     jieba_base.add_words(white_list)
 
     ## set up media
-    all_dict_set = fetch_all_dict(jieba_base)
+    white_dict, all_keyword_list = fetch_while_list_keywords()
+    all_dict_set = fetch_all_dict(jieba_base ,all_keyword_list)
     #  get stopwords
     stopwords = jieba_base.get_stopword_list()
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')

@@ -36,10 +36,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     stopwords_missoner = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
     time_dict = {}
-    all_dict_set = fetch_all_dict(jieba_base)
     #black_list = fetch_black_list_keywords()
     source_list = ['google', 'likr','facebook','xuite','yahoo','line','youtube']
-
+    white_dict, all_keyword_list = fetch_while_list_keywords()
+    all_dict_set = fetch_all_dict(jieba_base, all_keyword_list)
     black_dict = fetch_black_list_keywords()
     # web_id_all = ['ctnews']
     # # df_keyword_crossHot_last = fetch_now_crossHot_keywords(date_int)  ## take keyword in missoner_keyword_crossHot
@@ -55,6 +55,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             ## fetch source domain mapping
             source_domain_mapping = [web_id]
             black_list = black_dict[web_id]
+            white_list = white_dict[web_id]
             #while_list = fetch_while_list_keywords(web_id)
             ## fetch user_based popular article
             df_hot = fetch_df_hot(web_id,web_id_dict,n,date=date,is_UTC0=is_UTC0)
@@ -78,7 +79,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             key_cut_start = time.time()
             for index, row in df_hot.iterrows():
                 # ## process keyword ##
-                keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set)
+                keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list)
                 params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
                 params_data = np.array(row[['web_id', 'title', 'content']])
                 params_all = np.append(params_data, params)
@@ -97,9 +98,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 else:
                     domain_dict[row['article_id']]['other'] += int(row['pageviews'])
 
-
                 for keyword in keyword_list:
                     ## keyword and articles mapping, for table, missoner_keyword_article
+
                     dict_keyword_article[i] = {'web_id': web_id, 'article_id': row['article_id'], 'keyword': keyword, 'is_cut': is_cut,'url':url,'image':image}
                     i += 1
                     ## compute pageviews by external and internal sources, for table, missoner_keyword
@@ -345,7 +346,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # DBhelper.ExecuteUpdatebyChunk(df_crossHot_keyword_domain, db='dione', table='missoner_keyword_source_domain_crossHot',chunk_size=100000,is_ssh=False)
     return time_dict,step0_end-step0_start
 
-def fetch_all_dict(jieba_base):
+def fetch_all_dict(jieba_base,all_keyword_list):
     f1 = open('./jieba_based/add_words.txt')
     text1=set()
     for line in f1:
@@ -364,6 +365,7 @@ def fetch_all_dict(jieba_base):
     text5 = fetch_google_ads_keyword()
     text5 = set(text5)
     all_dict_set = set.union(text1,text3,text5)
+    all_dict_set = set.union(all_dict_set, set(all_keyword_list))
     return all_dict_set
 
 def fetch_google_ads_keyword():
@@ -596,6 +598,18 @@ def fetch_black_list_keywords():
     for key,web_id in data:
         black_dict[web_id].append(key)
     return black_dict
+def fetch_while_list_keywords():
+    while_dict = collections.defaultdict(list)
+    query = f"""SELECT name,web_id FROM BW_list where property=1"""
+    data = DBhelper('dione').ExecuteSelect(query)
+    all_keyword = []
+    for key,web_id in data:
+        if web_id == 'all':
+            all_keyword.append(key)
+            continue
+        while_dict[web_id].append(key)
+    return while_dict,all_keyword
+
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner,stopwotds_db):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
@@ -700,9 +714,10 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     return df
 
 ## cut keyword list if keywords is empty
-def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set):
+def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list):
     ## process keyword ##
     keywords = row['keywords']
+    all_dict = set.union(all_dict_set, set(white_list))
     #news = row['title'] + ' ' + row['content']
     news = row['title']
     if (news == '') | (news == '_') | len(news) < 2:
@@ -711,13 +726,13 @@ def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_l
     news_clean = jieba_base.filter_symbol(news_clean)
     if (keywords == '') | (keywords == '_') | len(keywords.split(',')) < 2:
         keyword_list = jieba.analyse.extract_tags(news_clean, topK=10)
-        keyword_list = [i for i in keyword_list if i in all_dict_set]
+        keyword_list = [i for i in keyword_list if i in all_dict]
         keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)[:5]
         keywords = ','.join(keyword_list)  ## add keywords
         is_cut = 1
     else:
         keyword_list = [k.strip() for k in keywords.split(',')]
-        keyword_list = [i for i in keyword_list if i in all_dict_set]
+        keyword_list = [i for i in keyword_list if i in all_dict]
         keyword_list = clean_keyword_list(keyword_list, stopwords, stopwords_missoner,black_list)
         is_cut = 0
     return keywords, keyword_list, is_cut
