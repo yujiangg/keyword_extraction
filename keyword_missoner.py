@@ -162,8 +162,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 source_data_df = source_data_df.fillna(0)
                 source_data_df['date'] = date_int
                 source_data_df['web_id'] = web_id
+                #
                 DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione', table=db_source_article_name, chunk_size=100000,is_ssh=False)
-
+                #
+                DBhelper.ExecuteUpdatebyChunk(source_data_df, db='dione_2', table=db_source_article_name,chunk_size=100000, is_ssh=False)
             source_keyword_end = time.time()
             time_dict[web_id]['source_keyword'] = source_keyword_end - source_keyword_start
 
@@ -212,8 +214,12 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                                           is_ssh=False)
             keyword_domain_df = get_domain_df(keyword_domain_dict, 'keyword',web_id,date_int)
             keyword_domain_df = keyword_domain_df.rename({'youtube': 'yt'}, axis='columns')
+            #
             DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione', table='missoner_keyword_source_domain', chunk_size=100000,
                                           is_ssh=False)
+            DBhelper.ExecuteUpdatebyChunk(keyword_domain_df, db='dione_2', table='missoner_keyword_source_domain', chunk_size=100000,
+                                          is_ssh=False)
+            #
             all_domain_end = time.time()
 
             time_dict[web_id]['all_domain'] = all_domain_end - all_domain_start
@@ -233,7 +239,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             #keyword_list_dict = df_keyword.to_dict('records')
 
             DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword', chunk_size=100000,is_ssh=False)
-            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword_new', chunk_size=100000,is_ssh=False)
+            #DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table='missoner_keyword_new', chunk_size=100000,is_ssh=False)
+            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione_2', table='missoner_keyword', chunk_size=100000,is_ssh=False)
             # query_keyword = MySqlHelper.generate_update_SQLquery(df_keyword, 'missoner_keyword')
             # MySqlHelper('dione', is_ssh=False).ExecuteUpdate(query_keyword, keyword_list_dict)
             all_keyword_end = time.time()
@@ -257,7 +264,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             #keyword_list_dict = df_keyword.to_dict('records')
 
             DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione', table= table_name , chunk_size=100000, is_ssh=False)
-
+            DBhelper.ExecuteUpdatebyChunk(df_keyword, db='dione_2', table=table_name, chunk_size=100000, is_ssh=False)
             week_keyword_end = time.time()
 
             time_dict[web_id]['week_keyword'] = week_keyword_end - week_keyword_start
