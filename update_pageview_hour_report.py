@@ -257,10 +257,11 @@ class pageveiw_hour:
         return df_mix
 
 if __name__ == '__main__':
+    slack_letter = slack_warning()
     try:
         pageveiw = pageveiw_hour()
         df = pageveiw.main()
         DBhelper.ExecuteUpdatebyChunk(df, db='dione', table='pageviews_report_hour_missoner', chunk_size=100000,is_ssh=False)
+        slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow() + datetime.timedelta(hours=8)}執行成功')
     except:
-         slack_letter = slack_warning()
-         slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗')
+         slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗 <@U03AD4B5D0C>')
