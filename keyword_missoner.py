@@ -802,10 +802,12 @@ if __name__ == '__main__':
         table_name = f"missoner_keyword_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
+        DBhelper('dione_2').ExecuteSelect(query)
 
         table_name = f"missoner_article_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
         DBhelper('dione').ExecuteSelect(query)
+
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
     parser = argparse.ArgumentParser(description='select_web_id_group number')
     parser.add_argument("-g", "--group", help="select_web_id_group")
