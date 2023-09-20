@@ -143,6 +143,8 @@ class pageveiw_hour:
                     continue
                 if 'timestamp' in i:
                     i['datetime'] = self.timetamp_to_srt(i['timestamp'])
+                    if not i.get('record_user'):
+                        continue
                     if i.get('event_type') == 'leave': #### likrTracking
                         i['referrer_url'] = i['record_user'].get('ul')
                         i['current_url'] = i['record_user'].get('un')
