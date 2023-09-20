@@ -145,6 +145,8 @@ class pageveiw_hour:
                     i['datetime'] = self.timetamp_to_srt(i['timestamp'])
                     if not i.get('record_user'):
                         continue
+                    if type(i.get('record_user')) == str:
+                        continue
                     if i.get('event_type') == 'leave': #### likrTracking
                         i['referrer_url'] = i['record_user'].get('ul')
                         i['current_url'] = i['record_user'].get('un')
@@ -259,8 +261,6 @@ if __name__ == '__main__':
         pageveiw = pageveiw_hour()
         df = pageveiw.main()
         DBhelper.ExecuteUpdatebyChunk(df, db='dione', table='pageviews_report_hour_missoner', chunk_size=100000,is_ssh=False)
-        record_hour = pageveiw.bulid_record_hour(pageveiw.objects)
-        DBhelper.ExecuteUpdatebyChunk(record_hour, db='dione', table='pageview_record_hours', chunk_size=100000, is_ssh=False)
     except:
          slack_letter = slack_warning()
          slack_letter.send_letter_test(f'pageviews_{datetime.datetime.utcnow()+datetime.timedelta(hours=8)}執行失敗')
