@@ -141,6 +141,8 @@ class pageveiw_hour:
                     continue
                 if 'datetime' not in i and 'timestamp' not in i:
                     continue
+                if not i.get('timestamp'):
+                    continue
                 if 'timestamp' in i:
                     i['datetime'] = self.timetamp_to_srt(i['timestamp'])
                     if not i.get('record_user'):
