@@ -152,7 +152,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             for name, source_data in source_dict_keyword.items():
                 if name == 'youtube':
                     name = 'yt'
+                ################
                 last_keyword_pageviews = fetch_now_source_keywords_by_web_id(web_id,date_int,name)
+                ################
                 db_source_article_name = f'missoner_keyword_{name}'
                 source_data_df = pd.DataFrame.from_dict(source_data, 'index',columns=['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage'])
                 source_data_df = source_data_df.reset_index().rename(columns={'index': 'keyword'})
@@ -196,7 +198,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
             trend_start = time.time()
             ## deal with trend before replace missoner_keyword table
+            #####
             df_pageviews_last = fetch_now_keywords_by_web_id(web_id,date_int,is_UTC0=is_UTC0)
+            #####
             df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
             df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
             ## article
@@ -325,6 +329,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
 
             df_keyword_article['dateint'] = date_int
             DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione', table='missoner_keyword_article_new', chunk_size=100000, is_ssh=False)
+            DBhelper.ExecuteUpdatebyChunk(df_keyword_article, db='dione_2', table='missoner_keyword_article_new',chunk_size=100000, is_ssh=False)
 
 
             time_dict[web_id]['keyword_article_1'] = keyword_article_end_1 - keyword_article_start_1
