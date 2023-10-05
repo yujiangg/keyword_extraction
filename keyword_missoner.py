@@ -701,13 +701,13 @@ def fetch_hot_articles(web_id, n=50, date=None, is_UTC0=False): # default get to
 @timing
 def fetch_now_keywords_by_web_id(web_id,date_int ,is_UTC0=False):
     query = f"SELECT keyword, pageviews FROM missoner_keyword WHERE date={date_int} and web_id='{web_id}'"
-    data = DBhelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione_2').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
 def fetch_now_source_keywords_by_web_id(web_id,date_int ,source,is_UTC0=False):
     query = f"SELECT keyword, pageviews FROM missoner_keyword_{source} WHERE date={date_int} and web_id='{web_id}'"
-    data = DBhelper('dione').ExecuteSelect(query)
+    data = DBhelper('dione_2').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
