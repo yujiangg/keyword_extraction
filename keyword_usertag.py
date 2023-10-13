@@ -8,7 +8,7 @@ import jieba.analyse
 import paramiko
 from ecom_usertag import update_ec_usertag
 from keyword_missoner import fetch_all_dict,fetch_while_list_keywords
-
+from mallbrands_custom import update_usertag_member
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner):
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords)  ## remove stopwords
     keyword_list = Composer_jieba().clean_keyword(keyword_list, stopwords_missoner)  ## remove stopwords
@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
 
     update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set)
-
+    update_usertag_member()
 
     # connect to server
     config = DBhelper._read_config()["mysql"]["missoner_screen"]
