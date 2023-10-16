@@ -398,7 +398,9 @@ def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
         df_hot_2 = fetch_ecom_df(web_id)
     elif group == 2:
         df_hot_2 = fetch_blog_df(web_id)
-    df_hot = pd.merge(df_hot_1,df_hot_2)
+    elif group == 4:
+        df_hot_2 = fetch_article_df_2(web_id)
+    df_hot = pd.merge(df_hot_1, df_hot_2)
     return df_hot
 def fetch_pageview_hot_df(web_id,dateint,n):
     qurey = f"SELECT web_id,article_id,source_domain,SUM(pageviews) as pageviews, SUM(landings) as landings, SUM(exits) as exits,SUM(bounce) as bounce, SUM(timeOnPage) as timeOnPage,date FROM pageviews_report_hour_missoner where date = '{dateint}' and web_id = '{web_id}'group by article_id,source_domain order by pageviews desc limit {n}"
@@ -413,6 +415,13 @@ def fetch_pageview_hot_df(web_id,dateint,n):
 def fetch_article_df(web_id):
     qurey = f"SELECT web_id,signature,title,content,keywords,url,image From news_table where web_id = '{web_id}'"
     data = DBhelper('jupiter_new').ExecuteSelect(qurey)
+    columns = ['web_id', 'article_id','title','content', 'keywords','url','image']
+    df_hot = pd.DataFrame(data=data, columns=columns)
+    return df_hot
+
+def fetch_article_df_2(web_id):
+    qurey = f"SELECT web_id,signature,title,content,keywords,url,image From article_list where web_id = '{web_id}'"
+    data = DBhelper('dione').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','title','content', 'keywords','url','image']
     df_hot = pd.DataFrame(data=data, columns=columns)
     return df_hot
