@@ -24,7 +24,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     else:
         date_int = date2int(date)
     step0_start = time.time()
-    web_id_dict = fetch_missoner_web_id_list(group)
+    web_id_dict, web_id_name = fetch_missoner_web_id_list(group)
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
@@ -56,6 +56,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             source_domain_mapping = [web_id]
             black_list = black_dict[web_id]
             white_list = white_dict[web_id]
+            web_id_name_list = web_id_name[web_id]
+            black_list.extend(web_id_name_list)
             #while_list = fetch_while_list_keywords(web_id)
             ## fetch user_based popular article
             df_hot = fetch_df_hot(web_id,web_id_dict,n,date=date,is_UTC0=is_UTC0)
@@ -664,9 +666,10 @@ def test_speed():
 
 @timing
 def fetch_missoner_web_id_list(group):
-    qurey = f"SELECT web_id,web_id_type FROM missoner_web_id_table WHERE enable = 1 and gp = {group}"
+    qurey = f"SELECT web_id,web_id_type,name FROM missoner_web_id_table WHERE enable = 1 and gp = {group}"
     data = DBhelper('dione').ExecuteSelect(qurey)
-    return {i: v for i, v in data}
+    web_id_dict, web_id_name = {a: b for a, b, c in data}, {a: eval(c) for a, b, c in data}
+    return web_id_dict, web_id_name
 
 @timing
 def fetch_source_domain_mapping(web_id):
