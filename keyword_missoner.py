@@ -732,8 +732,12 @@ def fetch_now_article_by_web_id(web_id, is_UTC0=False):
 
 def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     hour = hour - 1
+    if aok =='keyword':
+        db_name = 'dione_2'
+    else:
+        db_name = 'dione'
     query = f"SELECT {col}, pageviews FROM missoner_{aok}_hour_{week} WHERE hour='{hour}' and web_id='{web_id}' and date='{date}'"
-    data = DBhelper('dione').ExecuteSelect(query)
+    data = DBhelper(db_name).ExecuteSelect(query)
     df = pd.DataFrame(data, columns=[col, 'pageviews'])
     return df
 
@@ -818,7 +822,7 @@ if __name__ == '__main__':
         # update four tables, missoner_keyword, missoner_keyword_article, missoner_keyword_crossHot, missoner_keyword_trend
         table_name = f"missoner_keyword_hour_{weekday}"
         query = f"TRUNCATE TABLE {table_name}"
-        DBhelper('dione').ExecuteSelect(query)
+        #DBhelper('dione').ExecuteSelect(query)
         DBhelper('dione_2').ExecuteSelect(query)
 
         table_name = f"missoner_article_hour_{weekday}"
