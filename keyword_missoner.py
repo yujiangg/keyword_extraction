@@ -283,9 +283,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             ## merge keyword and trend
             df_article = pd.concat([df_article.set_index('article_id'), df_trend_article.set_index('article_id')], axis=1).reset_index(level=0)
             ## select enough number of keywords
-            pageviews_array_article = np.array(df_article['pageviews']).astype('int')
-            mean_pageviews_article = np.mean(pageviews_array_article)
-            df_article = df_article.query(f"pageviews > {mean_pageviews_article}").fillna(0)
+            #pageviews_array_article = np.array(df_article['pageviews']).astype('int')
+            #mean_pageviews_article = np.mean(pageviews_array_article)
+            df_article = df_article.fillna(0)
             ## save keyword statistics to table: missoner_keyword
             #article_list_dict = df_article.to_dict('records')
 
