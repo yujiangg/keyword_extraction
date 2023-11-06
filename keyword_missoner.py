@@ -206,7 +206,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             df_pageviews_now = pd.DataFrame.from_dict(data_trend, "index")[['keyword', 'pageviews']]
             df_trend = compute_trend_from_df(df_pageviews_last, df_pageviews_now)
             ## article
-            df_pageviews_last_article = fetch_now_article_by_web_id(web_id, is_UTC0=is_UTC0)
+            df_pageviews_last_article = fetch_now_article_by_web_id(web_id,date_int ,is_UTC0=is_UTC0)
             df_pageviews_now_article  = pd.DataFrame.from_dict(data_trend_article, "index")[['article_id', 'pageviews']]
             df_trend_article  = compute_trend_article_from_df(df_pageviews_last_article, df_pageviews_now_article)
             trend_end = time.time()
@@ -723,8 +723,7 @@ def fetch_now_source_keywords_by_web_id(web_id,date_int ,source,is_UTC0=False):
     df = pd.DataFrame(data, columns=['keyword', 'pageviews'])
     return df
 
-def fetch_now_article_by_web_id(web_id, is_UTC0=False):
-    date_int = date2int(get_today(is_UTC0=is_UTC0))
+def fetch_now_article_by_web_id(web_id,date_int,is_UTC0=False):
     query = f"SELECT article_id, pageviews FROM missoner_article WHERE date={date_int} and web_id='{web_id}'"
     data = DBhelper('dione').ExecuteSelect(query)
     df = pd.DataFrame(data, columns=['article_id', 'pageviews'])
