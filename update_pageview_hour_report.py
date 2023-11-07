@@ -152,10 +152,7 @@ class pageveiw_hour:
                     if i.get('event_type') == 'leave': #### likrTracking
                         i['referrer_url'] = i['record_user'].get('ul')
                         i['current_url'] = i['record_user'].get('un')
-                        i['title'] = i['record_user'].get('m_t')
-                if not i.get('title') or not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
-                    continue
-                if i['title'] == '_':
+                if not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
                     continue
                 ecoded_signature = self.fetch_url_encoder(i['web_id'], i['current_url'])
                 if ecoded_signature == '_':
