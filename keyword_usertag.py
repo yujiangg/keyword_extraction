@@ -96,8 +96,8 @@ def fetch_browse_record_join(web_id, date, is_df=False):
     print(query)
     data = DBhelper('dione_2').ExecuteSelect(query)
     df_1 = pd.DataFrame(data)
-    if not df_1:
-        return None
+    if not len(df_1):
+        return df_1
     query = f"""SELECT signature,title,content,keywords  FROM dione.article_list x WHERE web_id ='{web_id}'"""
     data = DBhelper('dione').ExecuteSelect(query)
     df_2 = pd.DataFrame(data)
@@ -115,7 +115,7 @@ def main_update_subscriber_usertag(web_id, date, is_UTC0, jump2gcp, expired_day,
     expired_date = get_date_shift(date_ref=date, days=-expired_day, to_str=True,
                                   is_UTC0=is_UTC0)  ## set to today + 3 (yesterday+4), preserve 4 days
     data = fetch_browse_record_join(web_id, date=date, is_df=True)
-    if not data:
+    if len(data) == 0:
         print('no valid data in dione.subscriber_browse_record')
         return pd.DataFrame(), pd.DataFrame()
     print('token_df_start!')
