@@ -7,6 +7,7 @@ from keyword_usertag_report import keyword_usertag_report, delete_expired_rows
 import jieba.analyse
 import paramiko
 from ecom_usertag import update_ec_usertag
+from slackwarningletter import slack_warning
 from keyword_missoner import fetch_all_dict,fetch_while_list_keywords
 from mallbrands_custom import update_usertag_member
 def clean_keyword_list(keyword_list, stopwords, stopwords_missoner):
@@ -83,33 +84,26 @@ def str_to_timetamp(s):
 def fetch_browse_record_join(web_id, date, is_df=False):
     date_start = to_datetime(date)
     date_end = date_start - datetime.timedelta(days=-1, seconds=1)  ## pixnet, upmedia, ctnews, cmoney,
-    date_end = str_to_timetamp(str(date_end))
-    date_start = str_to_timetamp(str(date_start))
-
+    date_end = int(str_to_timetamp(str(date_end)))
+    date_start = int(str_to_timetamp(str(date_start)))
     query = \
         f"""
-            SELECT 
-            s.web_id,
-            s.uuid,
-            s.article_id,
-            l.title,
-            l.content,
-            l.keywords
-        FROM
-            subscriber_browse_record_new s
-                INNER JOIN
-            article_list l ON s.article_id = l.signature                
-                AND s.web_id = '{web_id}'                
-                AND s.timetamps BETWEEN '{date_start}' AND '{date_end}'
-                AND l.web_id = '{web_id}'        
+        SELECT web_id,uuid,article_id  
+        FROM dione.pageview_record 
+        WHERE web_id ='{web_id}' and  session_id  BETWEEN  {date_start} and {date_end}    
         """
     print(query)
+    data = DBhelper('dione_2').ExecuteSelect(query)
+    df_1 = pd.DataFrame(data)
+    if not df_1:
+        return None
+    query = f"""SELECT signature,title,content,keywords  FROM dione.article_list x WHERE web_id ='{web_id}'"""
     data = DBhelper('dione').ExecuteSelect(query)
-    if is_df:
-        df = pd.DataFrame(data, columns=['web_id','uuid', 'article_id', 'title', 'content', 'keywords'])
-        return df
-    else:
-        return data
+    df_2 = pd.DataFrame(data)
+    df_2 = df_2.rename(columns={'signature': 'article_id'})
+    df = pd.merge(df_1, df_2)
+    return df
+
 
 @logging_channels(['clare_test'])
 @timing
@@ -120,8 +114,7 @@ def main_update_subscriber_usertag(web_id, date, is_UTC0, jump2gcp, expired_day,
     expired_date = get_date_shift(date_ref=date, days=-expired_day, to_str=True,
                                   is_UTC0=is_UTC0)  ## set to today + 3 (yesterday+4), preserve 4 days
     data = fetch_browse_record_join(web_id, date=date, is_df=True)
-    n_data = len(data)
-    if n_data == 0:
+    if not data:
         print('no valid data in dione.subscriber_browse_record')
         return pd.DataFrame(), pd.DataFrame()
     print('token_df_start!')
@@ -200,20 +193,24 @@ if __name__ == '__main__':
     #  get stopwords
     stopwords = jieba_base.get_stopword_list()
     stopwords_usertag = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
-
+    slack_letter = slack_warning()
     web_id_all, expired_day_all = fetch_usertag_web_id_ex_day()
     # web_id_all = ['btnet'] #btnet
     # expired_day_all = [4]
     ## get expired_date
     for date in date_list:
         for web_id, expired_day in zip(web_id_all, expired_day_all):
-            main_update_subscriber_usertag(web_id, date, is_UTC0,
-                                            jump2gcp, expired_day,
-                                            jieba_base, stopwords,
-                                            stopwords_usertag,
-                                            all_dict_set,
-                                            is_save=True,
-                                            delete_expired_report=True)
+            try:
+                main_update_subscriber_usertag(web_id, date, is_UTC0,
+                                                jump2gcp, expired_day,
+                                                jieba_base, stopwords,
+                                                stopwords_usertag,
+                                                all_dict_set,
+                                                is_save=True,
+                                                delete_expired_report=True)
+            except:
+                slack_letter.send_letter_test(f'usertag_{web_id}_{datetime.datetime.utcnow() + datetime.timedelta(hours=8)}失敗')
+
 
 
     update_ec_usertag(jieba_base,stopwords,stopwords_usertag,all_dict_set)
