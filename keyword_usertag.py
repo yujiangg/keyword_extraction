@@ -1,6 +1,7 @@
 import pandas as pd
 import datetime
 from db import DBhelper
+from tqdm import tqdm
 from basic import get_date_shift, get_yesterday, to_datetime, get_today, check_is_UTC0, timing, logging_channels, date_range, datetime_to_str
 from jieba_based import Composer_jieba
 from keyword_usertag_report import keyword_usertag_report, delete_expired_rows
@@ -199,8 +200,9 @@ if __name__ == '__main__':
     # expired_day_all = [4]
     ## get expired_date
     for date in date_list:
-        for web_id, expired_day in zip(web_id_all, expired_day_all):
+        for web_id, expired_day in tqdm(zip(web_id_all, expired_day_all)):
             try:
+                print('web_id')
                 main_update_subscriber_usertag(web_id, date, is_UTC0,
                                                 jump2gcp, expired_day,
                                                 jieba_base, stopwords,
