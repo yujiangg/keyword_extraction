@@ -40,7 +40,7 @@ def fetch_usertag_web_id_ex_day():
     return web_id_all, expired_day_all
 
 def fetch_token(web_id):
-    query = f"""SELECT registation_id,uuid,os_platform,is_fcm FROM web_gcm_reg WHERE web_id='{web_id}' order by id desc limit 10000"""
+    query = f"""SELECT registation_id,uuid,os_platform,is_fcm FROM web_gcm_reg WHERE web_id='{web_id}' order by id desc limit 100000"""
     data = DBhelper('cloud_subscribe', is_ssh=True).ExecuteSelect(query)
     data = pd.DataFrame(data, columns=['token','uuid','os_platform','is_fcm'])
     return data
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     for date in date_list:
         for web_id, expired_day in tqdm(zip(web_id_all, expired_day_all)):
             try:
-                print('web_id')
+                print(web_id,date)
                 main_update_subscriber_usertag(web_id, date, is_UTC0,
                                                 jump2gcp, expired_day,
                                                 jieba_base, stopwords,
