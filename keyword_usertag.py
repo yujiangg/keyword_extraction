@@ -95,13 +95,12 @@ def fetch_browse_record_join(web_id, date, is_df=False):
         """
     print(query)
     data = DBhelper('dione_2').ExecuteSelect(query)
-    df_1 = pd.DataFrame(data)
+    df_1 = pd.DataFrame(data,columns=['web_id', 'uuid', 'article_id'])
     if not len(df_1):
         return df_1
     query = f"""SELECT signature,title,content,keywords  FROM dione.article_list x WHERE web_id ='{web_id}'"""
     data = DBhelper('dione').ExecuteSelect(query)
-    df_2 = pd.DataFrame(data)
-    df_2 = df_2.rename(columns={'signature': 'article_id'})
+    df_2 = pd.DataFrame(data,columns=['article_id', 'title', 'content', 'keywords'])
     df = pd.merge(df_1, df_2)
     return df
 
