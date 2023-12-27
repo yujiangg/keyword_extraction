@@ -135,7 +135,7 @@ class pageveiw_hour:
                 if i.get('behavior_type') not in ('landing','likrTracking'):
                     continue
                 if i.get('behavior_type') == 'likrTracking':
-                    if i.get('event_type') != 'leave':
+                    if i.get('event_type') != 'load':
                         continue
                 if 'uuid' not in i or i['uuid'] == '_':
                     continue
@@ -149,7 +149,7 @@ class pageveiw_hour:
                         continue
                     if type(i.get('record_user')) == str:
                         continue
-                    if i.get('event_type') == 'leave': #### likrTracking
+                    if i.get('event_type') == 'load': #### likrTracking
                         i['referrer_url'] = i['record_user'].get('ul')
                         i['current_url'] = i['record_user'].get('un')
                 if not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
@@ -215,45 +215,6 @@ class pageveiw_hour:
         df['hour'] = self.tw_hour
         df['date'] = int(''.join(self.tw_date.split('-')))
         return df
-
-    def bulid_record_hour(self, obj):
-        dic = collections.defaultdict(int)
-        dic_in = collections.defaultdict(int)
-        for o in tqdm(obj):
-            k = json.loads(self.awsS3.Read(o.key))
-            for i in k:
-                if not i.get('web_id'):
-                    continue
-                if i.get('event_type') == 'leave':
-                    i['referrer_url'] = i['record_user'].get('ul')
-                if 'value' in i :
-                    fxxk = i.get('value')
-                    if type(fxxk) == str:
-                        i['value'] = eval(fxxk)
-                        i['referrer_url'] = i['value'].get('landing_url')
-                if i.get('referrer_url'):
-                    web_id = i.get('web_id')
-                    dic[web_id] += 1
-                    if re.findall(web_id,i.get('referrer_url')):
-                        dic_in[web_id] += 1
-        df = pd.DataFrame.from_dict(dic, orient='index', columns=['record'])
-        df = df.reset_index()
-        df['web_id'] = df['index']
-        df = df[['web_id', 'record']]
-        df_in = pd.DataFrame.from_dict(dic_in, orient='index', columns=['internal'])
-        df_in = df_in.reset_index()
-        df_in['web_id'] = df_in['index']
-        df_in = df_in[['web_id', 'internal']]
-
-        df_mix = pd.merge(df, df_in, how='left', on='web_id')
-        df_mix.fillna(0, inplace=True)
-        df_mix['internal'] = df_mix['internal'].astype('int')
-        df_mix['external'] = df_mix.apply(lambda x: x['record'] - x['internal'],axis=1)
-        df_mix['external_Traffic_percentage'] = [round(i, 2) for i in df_mix['external'] / df_mix['record']]
-        df_mix['date'] = self.tw_date
-        df_mix['hours'] = self.tw_hour
-        df_mix = df_mix[df_mix['record'] > 10]
-        return df_mix
 
 if __name__ == '__main__':
     slack_letter = slack_warning()
