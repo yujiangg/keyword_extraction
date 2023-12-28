@@ -135,7 +135,7 @@ class pageveiw_hour:
                 if i.get('behavior_type') not in ('landing','likrTracking'):
                     continue
                 if i.get('behavior_type') == 'likrTracking':
-                    if i.get('event_type') != 'leave':
+                    if i.get('event_type') != 'load':
                         continue
                 if 'uuid' not in i or i['uuid'] == '_':
                     continue
@@ -145,13 +145,13 @@ class pageveiw_hour:
                     if not i.get('timestamp'):
                         continue
                     i['datetime'] = self.timetamp_to_srt(i['timestamp'])
-                    if not i.get('record_user'):
+                    if not i.get('load'):
                         continue
-                    if type(i.get('record_user')) == str:
+                    if type(i.get('load')) == str:
                         continue
-                    if i.get('event_type') == 'leave': #### likrTracking
-                        i['referrer_url'] = i['record_user'].get('ul')
-                        i['current_url'] = i['record_user'].get('un')
+                    if i.get('event_type') == 'load': #### likrTracking
+                        i['referrer_url'] = i['load'].get('ul')
+                        i['current_url'] = i['load'].get('un')
                 if not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
                     continue
                 ecoded_signature = self.fetch_url_encoder(i['web_id'], i['current_url'])
