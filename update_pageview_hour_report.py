@@ -139,6 +139,7 @@ class pageveiw_hour:
                         continue
                 if 'uuid' not in i or i['uuid'] == '_':
                     continue
+                uuid = str(i['uuid'])
                 if 'datetime' not in i and 'timestamp' not in i:
                     continue
                 if 'timestamp' in i:
@@ -157,11 +158,11 @@ class pageveiw_hour:
                 ecoded_signature = self.fetch_url_encoder(i['web_id'], i['current_url'])
                 if ecoded_signature == '_':
                     continue
-                data_dic[i['web_id']][i['uuid']].append(
-                    [i['web_id'], i['uuid'], ecoded_signature, i['current_url'], i['referrer_url'], i['datetime'],
+                data_dic[i['web_id']][uuid].append(
+                    [i['web_id'], uuid, ecoded_signature, i['current_url'], i['referrer_url'], i['datetime'],
                      self.check_domain(i['referrer_url'], i['web_id']), 0, 0, 0, 0])
                 if 'record_user' in i:
-                    data_dic[i['web_id']][i['uuid']][-1][-4] = i['record_user'].get('t_p') if i['record_user'].get('t_p') else 0
+                    data_dic[i['web_id']][uuid][-1][-4] = i['record_user'].get('t_p') if i['record_user'].get('t_p') else 0
         return data_dic
 
     def count_timepage_landing_bounce_exit(self, data_dic):
