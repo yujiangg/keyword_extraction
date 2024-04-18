@@ -47,7 +47,7 @@ class pageveiw_hour:
 
     def fetch_webid_rule(self, web_id_list):
         qurey = f"""SELECT web_id, url_split, pattern, url_modify_rule, filter_rule, condition_rule, signature_rule FROM web_id_url_encoder_rule WHERE web_id IN ('{"','".join(web_id_list)}')"""
-        url_en = DBhelper('jupiter_new').ExecuteSelect(qurey)
+        url_en = DBhelper('dione_2').ExecuteSelect(qurey)
         web_id_to_pattern_dict = {
             web_id: {'pattern': pattern, 'url_modify_rule': url_modify_rule, 'filter_rule': filter_rule,
                      'signature_rule': signature_rule, 'condition_rule': condition_rule, 'url_split': url_split} for
