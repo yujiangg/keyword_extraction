@@ -209,10 +209,10 @@ class pageveiw_hour:
         df = pd.DataFrame(data,
                           columns=['web_id', 'uuid', 'article_id', 'current_url', 'referrer_url', 'datetime',
                                    'source_domain', 'timeOnPage', 'landings', 'bounce', 'exits'])
-        df1 = df.groupby(['web_id', 'article_id', 'source_domain']).sum()
-        df2 = df.groupby(['web_id', 'article_id', 'source_domain'])['uuid'].count()
-        df = pd.concat([df1, df2], axis=1).rename(columns={'uuid': 'pageviews'}).reset_index()
+        df['pageviews'] = 1
+        df = df.groupby(['web_id', 'article_id', 'source_domain']).sum().reset_index()
         df = df[df.source_domain != 'None']
+        df.drop(columns=['uuid','current_url','referrer_url','datetime'],inplace=True)
         df['hour'] = self.tw_hour
         df['date'] = int(''.join(self.tw_date.split('-')))
         return df
