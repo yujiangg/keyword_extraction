@@ -399,10 +399,14 @@ def fetch_df_hot(web_id,web_id_dict,n,date=None,is_UTC0=False):
         date_int = date2int(date)
     group = web_id_dict[web_id]
     df_hot_1 = fetch_pageview_hot_df(web_id,date_int,n)
+    if df_hot_1.size == 0:
+        return df_hot_1
     if group == 1:
         df_hot_2 = fetch_ecom_df(web_id)
     else:
         df_hot_2 = fetch_article_df_2(web_id)
+    if df_hot_2.size == 0:
+        return df_hot_2
     df_hot = pd.merge(df_hot_1, df_hot_2)
     return df_hot
 def fetch_pageview_hot_df(web_id,dateint,n):
@@ -667,7 +671,7 @@ def test_speed():
 
 @timing
 def fetch_missoner_web_id_list(group):
-    qurey = f"SELECT web_id,web_id_type,name FROM missoner_web_id_table WHERE enable = 1 and gp = {group}"
+    qurey = f"SELECT web_id,web_id_type,name FROM missoner_web_id_table WHERE enable = 1"
     data = DBhelper('dione').ExecuteSelect(qurey)
     web_id_dict, web_id_name = {a: b for a, b, c in data}, {a: eval(c) for a, b, c in data}
     return web_id_dict, web_id_name
