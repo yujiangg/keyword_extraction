@@ -441,7 +441,7 @@ def fetch_blog_df(web_id):
 
 def fetch_ecom_df(web_id):
     qurey = f"SELECT web_id,signature,title,content,url,image From ecom_table where web_id = '{web_id}'"
-    data = DBhelper('jupiter_new').ExecuteSelect(qurey)
+    data = DBhelper('dione_2').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','title','content','url','image']
     df_hot = pd.DataFrame(data=data, columns=columns)
     df_hot['keywords'] ='_'
