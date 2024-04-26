@@ -423,7 +423,7 @@ def fetch_article_df(web_id):
     return df_hot
 
 def fetch_article_df_2(web_id):
-    qurey = f"SELECT web_id,signature,title,content,keywords,url,image From article_list where web_id = '{web_id}'"
+    qurey = f"SELECT web_id,signature,title,content,keywords,url,image From article_list where web_id = '{web_id}' order by id desc limit 10000"
     data = DBhelper('dione').ExecuteSelect(qurey)
     columns = ['web_id', 'article_id','title','content', 'keywords','url','image']
     df_hot = pd.DataFrame(data=data, columns=columns)
