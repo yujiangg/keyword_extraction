@@ -31,11 +31,11 @@ if __name__ == '__main__':
     DBhelper('dione_2').ExecuteSelect(query)
     web_id_list = get_web_id_list()
     type_name = {1: 'yesterday', 7: 'week', 30: 'month'}
-    now_date = int(datetime.datetime.utcnow().strftime("%Y%m%d"))
+    now_date = int((datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y%m%d"))
     for web_id in web_id_list:
         df = pd.DataFrame(columns=['web_id', 'keyword', 'article_count', 'article_ids', 'types', 'date'])
         for day in [1, 7, 30]:
-            dateint = int((datetime.datetime.utcnow() - datetime.timedelta(days=day)).strftime("%Y%m%d"))
+            dateint = int((datetime.datetime.utcnow() + datetime.timedelta(hours=8) - datetime.timedelta(days=day)).strftime("%Y%m%d"))
             df_ = get_data(web_id, dateint)
             df_['types'] = type_name[day]
             df_['date'] = now_date
