@@ -55,7 +55,7 @@ class pageveiw_hour:
         return web_id_to_pattern_dict
 
     def fetch_url_encoder(self, web_id, url):
-        if web_id in self.ecom_web_id_list:
+        if web_id in self.ecom_web_id_list or web_id == 'digitimes':
             url = parse.unquote(url)
         try:
             finding = re.findall(self.web_id_to_pattern_dict[web_id]['pattern'], url)
