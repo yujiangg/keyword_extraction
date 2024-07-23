@@ -4,7 +4,7 @@ import datetime
 
 
 def get_web_id_list():
-    q = "SELECT web_id  FROM dione.missoner_web_id_table x WHERE ai_article_enable =1"
+    q = "SELECT web_id  FROM dione.missoner_web_id_table x WHERE article_pre_enable =1"
     web_id_list = DBhelper('dione').ExecuteSelect(q)
     return [i[0] for i in web_id_list]
 
