@@ -93,6 +93,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
                 params_data = np.array(row[['web_id', 'title', 'content']])
                 params_all = np.append(params_data, params)
                 dm = row['source_domain']
+                if dm == "google search":
+                    dm = 'google'
+                elif dm == "fb":
+                    dm = 'facebook'
                 url = row['url']
                 image = row['image']
                 article_dict = collect_article_pageviews_by_source(article_dict, row, source_domain_mapping, params_all,params,dm)

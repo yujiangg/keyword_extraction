@@ -9,6 +9,7 @@ from db import DBhelper
 import collections
 import pandas as pd
 import re
+from source_tool import SourceTool
 from tqdm import tqdm
 import hashlib
 from urllib import parse
@@ -21,8 +22,10 @@ class pageveiw_hour:
         self.tw_now = self.utc_now + datetime.timedelta(hours=8)
         self.tw_date, self.tw_hour = self.tw_now.strftime('%Y-%m-%d,%H').split(',')
 
+        self.browser_map = {10:'line', 11:'weixin', 12:'fb', 13:'instagram','10':'line', '11':'weixin', '12':'fb', '13':'instagram'}
         self.awsS3 = AmazonS3('elephants3')
         self.web_id_list = set(self.fetch_missoner_web_id_list())
+        self.domain_tool = SourceTool(self.web_id_list)
         self.ecom_web_id_list = set(self.fetch_missoner_ecom_web_id_list())
         self.source_domain_mapping = self.fetch_source_domain_mapping()
         self.web_id_to_pattern_dict = self.fetch_webid_rule(self.web_id_list)
@@ -103,20 +106,10 @@ class pageveiw_hour:
         data = DBhelper('dione').ExecuteSelect(query)
         return [d[0] for d in data]
 
-    def check_domain(self, url, web_id):
+    def check_domain(self, web_id: str, url_last: str, url_now: str, browser_types):
         # source_domain = fetch_source_domain_mapping(web_id)
-        if not url:
-            return 'None'
+        return self.domain_tool.get_url_source(web_id, url_last, url_now, browser_types)
 
-        for domain in self.domain_list:
-            dm = re.findall(domain, url)
-            if dm:
-                return dm[0]
-        for inter in self.domain_dict[web_id]:
-            dm = re.findall(inter, url)
-            if dm:
-                return web_id
-        return 'other'
 
     def str_to_timetamp(self, s):
         return datetime.datetime.timestamp(datetime.datetime.strptime(s, '%Y-%m-%d %H:%M:%S'))
@@ -153,14 +146,15 @@ class pageveiw_hour:
                     if i.get('event_type') == 'load': #### likrTracking
                         i['referrer_url'] = i['load'].get('ul')
                         i['current_url'] = i['load'].get('un')
-                if not i.get('current_url') or not i.get('referrer_url') or i['current_url'] == i['referrer_url']:
+                if not i.get('current_url') or i['current_url'] == i['referrer_url']:
                     continue
                 ecoded_signature = self.fetch_url_encoder(i['web_id'], i['current_url'])
                 if ecoded_signature == '_':
                     continue
+                browser_types = self.browser_map.get(i.get('browser_type')) if i.get('browser_type') in self.browser_map else ''
                 data_dic[i['web_id']][uuid].append(
                     [i['web_id'], uuid, ecoded_signature, i['current_url'], i['referrer_url'], i['datetime'],
-                     self.check_domain(i['referrer_url'], i['web_id']), 0, 0, 0, 0])
+                     self.check_domain(i.get('web_id'), i['referrer_url'], i['current_url'],browser_types), 0, 0, 0, 0])
                 if 'record_user' in i:
                     data_dic[i['web_id']][uuid][-1][-4] = i['record_user'].get('t_p') if i['record_user'].get('t_p') else 0
         return data_dic
