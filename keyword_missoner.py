@@ -297,10 +297,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             #article_list_dict = df_article.to_dict('records')
 
             DBhelper.ExecuteUpdatebyChunk(df_article, db='dione', table='missoner_article', chunk_size=100000, is_ssh=False)
-            if web_id_dict[web_id] != 1:
-                new_df_artice = df_article[['web_id', 'article_id', 'title', 'content', 'pageviews', 'date']]
-                new_df_artice['types'] = web_id_dict[web_id]
-                DBhelper.ExecuteUpdatebyChunk(new_df_artice, db='dione', table='missoner_article_qsearch', chunk_size=100000,is_ssh=False)
+            #if web_id_dict[web_id] != 1:
+            #    new_df_artice = df_article[['web_id', 'article_id', 'title', 'content', 'pageviews', 'date']]
+            #    new_df_artice['types'] = web_id_dict[web_id]
+            #    DBhelper.ExecuteUpdatebyChunk(new_df_artice, db='dione', table='missoner_article_qsearch', chunk_size=100000,is_ssh=False)
 
             all_article_end = time.time()
 
