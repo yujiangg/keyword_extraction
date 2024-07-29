@@ -1,5 +1,5 @@
 import collections
-
+import yake
 import jieba
 import jieba.analyse
 import numpy as np
@@ -24,7 +24,8 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     else:
         date_int = date2int(date)
     step0_start = time.time()
-    web_id_dict, web_id_name = fetch_missoner_web_id_list(group)
+    web_id_dict, web_id_name = fetch_missoner_web_id_list()
+    web_id_eng = fetch_eng_web_id()
     ## set up config (add word, user_dict.txt ...)
     jieba_base = Composer_jieba()
     jieba_base.set_config() ## add all user dictionary (add_words, google_trend, all_hashtag)
@@ -32,6 +33,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     # white_list = fetch_white_list_keywords()
     # jieba_base.add_words(white_list)
 
+    custom_kw_extractor = yake.KeywordExtractor(lan="en", n=2, dedupLim=0.1, top=20, features=None)
+
+    ##
     stopwords = jieba_base.get_stopword_list()
     stopwords_missoner = jieba_base.read_file('./jieba_based/stop_words_usertag.txt')
     ## set up media
@@ -50,7 +54,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     for web_id in web_id_dict:
         try:
             time_dict[web_id] = {}
-
+            eng = 1 if web_id in web_id_eng else 0
             step1_start = time.time()
             ## fetch source domain mapping
             source_domain_mapping = [web_id]
@@ -81,7 +85,10 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             key_cut_start = time.time()
             for index, row in df_hot.iterrows():
                 # ## process keyword ##
-                keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list)
+                if eng == 1:
+                    keywords, keyword_list, is_cut  = generate_eng_keyword_list(row,custom_kw_extractor)
+                elif eng == 0:
+                    keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list)
                 params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
                 params_data = np.array(row[['web_id', 'title', 'content']])
                 params_all = np.append(params_data, params)
@@ -670,11 +677,17 @@ def test_speed():
 
 
 @timing
-def fetch_missoner_web_id_list(group):
+def fetch_missoner_web_id_list():
     qurey = f"SELECT web_id,web_id_type,name FROM missoner_web_id_table WHERE enable = 1"
     data = DBhelper('dione').ExecuteSelect(qurey)
     web_id_dict, web_id_name = {a: b for a, b, c in data}, {a: eval(c) for a, b, c in data}
     return web_id_dict, web_id_name
+
+def fetch_eng_web_id():
+    qurey = f"SELECT web_id FROM missoner_web_id_table WHERE eng = 1"
+    data = DBhelper('dione').ExecuteSelect(qurey)
+    web_id_eng = {i[0] for i in data}
+    return web_id_eng
 
 @timing
 def fetch_source_domain_mapping(web_id):
@@ -746,6 +759,13 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     return df
 
 ## cut keyword list if keywords is empty
+def generate_eng_keyword_list(row, custom_kw_extractor):
+    news = row['title']
+    keyword_res = custom_kw_extractor.extract_keywords(news)
+    keyword_list = [i[0] for i in keyword_res]
+    keywords = ','.join(keyword_list)
+    return keywords, keyword_list, 1
+
 def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list):
     ## process keyword ##
     keywords = row['keywords']
