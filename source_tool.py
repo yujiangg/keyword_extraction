@@ -150,7 +150,7 @@ class SourceTool:
         web_id = "','".join(self.web_ids)
         query = f'''SELECT web_id, `domain` FROM web_push.all_website_category
                 WHERE web_id in ('{web_id}') GROUP BY web_id;'''
-        data = DBhelper('db_subscribe').ExecuteSelect(query)
+        data = DBhelper('db_subscribe', is_ssh=True).ExecuteSelect(query)
         if len(data) != len(self.web_ids):
             web_ids = [i for i in self.web_ids if i not in [row['web_id'] for row in data]]
             raise ValueError(f'{web_ids} is/are not correct web_id(s)')
