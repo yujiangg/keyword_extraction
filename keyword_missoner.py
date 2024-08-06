@@ -11,6 +11,7 @@ import pickle
 from basic.decorator import timing
 from jieba_based.jieba_utils import Composer_jieba
 from db.mysqlhelper import MySqlHelper
+from underthesea import chunk
 from db import DBhelper
 from media.Media import Media
 from basic.date import get_hour, date2int, get_today, get_yesterday, check_is_UTC0
@@ -54,7 +55,7 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
     for web_id in web_id_dict:
         try:
             time_dict[web_id] = {}
-            eng = 1 if web_id in web_id_eng else 0
+            lang = web_id_eng[web_id] if web_id in web_id_eng else 0
             step1_start = time.time()
             ## fetch source domain mapping
             source_domain_mapping = [web_id]
@@ -85,9 +86,9 @@ def update_missoner_three_tables(weekday,hour,date=None,n=5000,group = 1,is_UTC0
             key_cut_start = time.time()
             for index, row in df_hot.iterrows():
                 # ## process keyword ##
-                if eng == 1:
-                    keywords, keyword_list, is_cut  = generate_eng_keyword_list(row,custom_kw_extractor)
-                elif eng == 0:
+                if lang != 0: ## 英文
+                    keywords, keyword_list, is_cut = generate_eng_keyword_list(row, custom_kw_extractor, lang)
+                elif lang == 0:
                     keywords, keyword_list, is_cut = generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list)
                 params = np.array(row[['pageviews', 'landings', 'exits', 'bounce', 'timeOnPage']]).astype('int')
                 params_data = np.array(row[['web_id', 'title', 'content']])
@@ -688,9 +689,9 @@ def fetch_missoner_web_id_list():
     return web_id_dict, web_id_name
 
 def fetch_eng_web_id():
-    qurey = f"SELECT web_id FROM missoner_web_id_table WHERE eng = 1"
+    qurey = f"SELECT web_id, eng FROM missoner_web_id_table WHERE eng != 0"
     data = DBhelper('dione').ExecuteSelect(qurey)
-    web_id_eng = {i[0] for i in data}
+    web_id_eng = {web_id: eng for web_id, eng in data}
     return web_id_eng
 
 @timing
@@ -763,11 +764,20 @@ def fetch_last_hour_article(web_id,hour,aok,col,week,date):
     return df
 
 ## cut keyword list if keywords is empty
-def generate_eng_keyword_list(row, custom_kw_extractor):
-    news = row['title']
-    keyword_res = custom_kw_extractor.extract_keywords(news)
-    keyword_list = [i[0] for i in keyword_res]
-    keywords = ','.join(keyword_list)
+
+
+def generate_eng_keyword_list(row, custom_kw_extractor, lang):
+    if lang == 1:   # 英文
+        news = row['title']
+        keyword_res = custom_kw_extractor.extract_keywords(news)
+        keyword_list = [i[0] for i in keyword_res]
+        keywords = ','.join(keyword_list)
+    elif lang == 2:     # 越南文
+        news = row['title']
+        k = chunk(news)
+        keyword_list = [keyword for keyword, n, nr in k if n in ("N", "Np", "A")]
+        keywords = ','.join(keyword_list)
+
     return keywords, keyword_list, 1
 
 def generate_keyword_list(row, jieba_base, stopwords, stopwords_missoner,black_list,all_dict_set,white_list):
