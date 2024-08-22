@@ -80,7 +80,7 @@ class pageveiw_hour:
                 return '_'
             return '_'
 
-        if len(signature.encode()) > 60:
+        if len(signature.encode()) > 60 or web_id in ['disp', 'ftvnews']:
             encoder = hashlib.sha256()
             encoder.update((signature).encode())
             ecoded_signature = web_id + '_' + encoder.hexdigest()
