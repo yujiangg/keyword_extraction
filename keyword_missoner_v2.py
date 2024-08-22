@@ -376,7 +376,7 @@ def main(web_id, web_id_type, web_id_lang, tw_date, tw_hour, weekday, n=5000):
         df_keyword = df_keyword.dropna(subset=['web_id'])
         df_keyword = df_keyword.fillna(0)
 
-        update_df['missoner_keyword'] = df_keyword.copy()
+        update_df[('dione_2', 'missoner_keyword')] = df_keyword.copy()
 
         df_keyword['hour'] = tw_hour
         if tw_hour < 1:
@@ -418,6 +418,7 @@ def main(web_id, web_id_type, web_id_lang, tw_date, tw_hour, weekday, n=5000):
         df_keyword_article = pd.DataFrame.from_dict(dict_keyword_article, "index")
         df_keyword_article['dateint'] = dateint
         update_df[('dione_2', f"missoner_keyword_article_new")] = df_keyword_article
+        update_df[('dione', f"missoner_keyword_article_new")] = df_keyword_article.copy()
         print(f"*****計算完成{web_id}*****")
         return update_df
     except Exception as e:
