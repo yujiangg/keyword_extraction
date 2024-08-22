@@ -10,7 +10,7 @@ import random
 import numpy as np
 
 def fetch_web_id_list():
-    q = f"SELECT web_id,web_id_type,eng FROM missoner_web_id_table WHERE enable = 1"
+    q = f"SELECT web_id,web_id_type,eng FROM missoner_web_id_table WHERE enable = 1 and keyword_enable = 1"
     data = DBhelper('dione').ExecuteSelect(q)
     web_id_dict = {web_id: {"lang": eng, "type": web_id_type} for web_id, web_id_type,eng in data}
     return web_id_dict

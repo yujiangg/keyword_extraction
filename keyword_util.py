@@ -57,7 +57,7 @@ def fetch_black_list_keywords():
     data = DBhelper('dione').ExecuteSelect(query)
     for key,web_id in data:
         black_dict[web_id].append(key)
-    q = f"SELECT web_id,name FROM missoner_web_id_table WHERE enable = 1"
+    q = f"SELECT web_id,name FROM missoner_web_id_table WHERE enable = 1 and keyword_enable = 1"
     data = DBhelper('dione').ExecuteSelect(q)
     for web_id, key in data:
         black_dict[web_id].extend(eval(key))
