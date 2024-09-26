@@ -12,6 +12,7 @@ import nltk
 import stanza
 import jieba.analyse
 import collections
+import glob
 
 #  中文切詞
 jieba_base = Composer_jieba()
@@ -177,6 +178,14 @@ def get_thai(text):
     return keyword_list, keywords
 
 
+def del_modle():
+    l = glob.glob(os.path.join("/tmp/", "*.crfsuite"))
+    for file_path in l:
+        try:
+            os.remove(file_path)  # 刪除檔案
+            print(f"已刪除: {file_path}")
+        except Exception as e:
+            print(f"無法刪除 {file_path}: {e}")
 
 
 

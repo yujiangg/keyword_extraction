@@ -492,3 +492,4 @@ if __name__ == '__main__':
     if t_spent >= 3600:
         slack_letter.send_letter_test(f'文案大師關鍵字,{str(tw_date)}-{str(tw_hour)}時,本次執行時間為{t_spent}s,已超過50分鐘,請檢查問題')
     slack_letter.send_letter_test(f'文案大師關鍵字,{str(tw_date)}-{str(tw_hour)}時,執行成功')
+    del_modle()
