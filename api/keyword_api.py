@@ -5,7 +5,12 @@ from definitions import ROOT_DIR
 import jieba
 import jieba.analyse
 import uvicorn
+from dotenv import load_dotenv
+from openai import AzureOpenAI
+import os
+import json
 
+load_dotenv()
 description = """
 # 切字API
 用於切字, 抽取關鍵字, 計算兩個詞之間相似度, 自定義辭彙, 自新增停止詞與還原初始詞庫設定
@@ -62,6 +67,12 @@ tags_metadata = [
 ]
 app = FastAPI(title="CutApp", description=description, openapi_tags=tags_metadata)
 
+AZURE_client = AzureOpenAI(
+    azure_endpoint=os.getenv('azure_endpoint'),
+    api_key=os.getenv('api_key'),
+    api_version=os.getenv('api_version')
+)
+
 
 ## jieba config
 composer = Composer()
@@ -93,6 +104,54 @@ def keyword_extraction(s: str='', topK: int=10):
         data = [word for word in data if word != ' ']
         data = composer.clean_keyword(data, stopwords)
         return {"message": "keyword extraction", "data": data}
+
+
+@app.get("/keywordjp", tags=["Extract keywords"])
+def keyword_extraction(s: str = '', topK: int = 10):
+    global composer, stopwords
+    if s == '':
+        return {"message": "no sentence input", "data": ""}
+    else:
+        response = AZURE_client.chat.completions.create(
+            model="chat-cs-canada-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "你是專業的日本語提取關鍵字工具。"
+                        "請根據用戶的輸入內容提取出重要的關鍵字字詞，"
+                        "並嚴格只回傳 JSON 格式的結果，不要包含任何其他文字。"
+                        "返回格式必須與以下示例一致："
+                        "{\"keyword_list\": [\"日本語\", \"ください\"]}"
+                    )
+                },
+                {"role": "user", "content": s}
+            ]
+        )
+        # 解析回傳的 JSON 格式關鍵字列表
+        extracted_keywords = json.loads(response.choices[0].message.content)['keyword_list']
+
+        # 使用當前資料夾目錄來定義儲存關鍵字的檔案路徑
+        file_path = os.path.join(os.getcwd(), "keyword_jp.txt")
+
+        # 如果檔案存在，讀取現有的關鍵字（以避免重複）
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                existing_keywords = set(line.strip() for line in f if line.strip())
+        else:
+            existing_keywords = set()
+
+        # 將新的關鍵字加入，並合併成完整的關鍵字集合
+        new_keywords = set(extracted_keywords)
+        all_keywords = existing_keywords.union(new_keywords)
+
+        # 將更新後的關鍵字集合寫回檔案，每行一個關鍵字
+        with open(file_path, "w", encoding="utf-8") as f:
+            for keyword in sorted(all_keywords):
+                f.write(keyword + "\n")
+
+    return {"message": "keyword extraction", "data": extracted_keywords[:topK]}
 
 @app.post("/word/add", tags=["Add words"])
 def add_word(s: str='', s_join: str=None, sep: str=','):
