@@ -2,6 +2,7 @@ import os.path
 from fastapi import FastAPI
 from gensim_compose.embedding import Composer
 from definitions import ROOT_DIR
+from jieba_chatgpt import Jieba_ChatGPT
 import jieba
 import jieba.analyse
 import uvicorn
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 from openai import AzureOpenAI
 import os
 import json
+import re
 
 load_dotenv()
 description = """
@@ -25,6 +27,10 @@ tags_metadata = [
     {
         "name": "Extract keywords",
         "description": "Extract keywords based on TF-IDF.",
+    },
+    {
+        "name": "Add words by ChatGPT",
+        "description": "Add a word or a list of words that have been corrected and refined by ChatGPT ",
     },
     {
         "name": "Add words",
@@ -81,10 +87,11 @@ composer.set_config(filename_stopwords='stop_words.txt', filename_idf='idf_train
 stopwords = composer.get_stopword_list()
 ROOT_DIR = ROOT_DIR
 
+jieba_chatgpt = Jieba_ChatGPT()
 @app.get("/cut", tags=["Tokenize sentence"])
-def cut(s: str=''):
+def cut(s: str = ''):
     global composer
-    if s=='':
+    if s == '':
         return {"message": "no sentence input", "data": ""}
     else:
         s_clean = composer.preserve_str(s, pattern="[\u4E00-\u9FFFa-zA-Z]*")
@@ -93,16 +100,21 @@ def cut(s: str=''):
         # data = [word for word in data if len(word) != 1]
         return {"message": "sentence tokenization", "data": data}
 
+
 @app.get("/keyword", tags=["Extract keywords"])
-def keyword_extraction(s: str='', topK: int=10):
+def keyword_extraction(s: str = '', topK: int = 10):
     global composer, stopwords
-    if s=='':
+    if s == '':
         return {"message": "no sentence input", "data": ""}
     else:
         s_clean = composer.preserve_str(s, pattern="[\u4E00-\u9FFF]*")
         data = jieba.analyse.extract_tags(s_clean, topK=topK)
         data = [word for word in data if word != ' ']
         data = composer.clean_keyword(data, stopwords)
+
+        d = [[s_clean], data]
+        open(f'{ROOT_DIR}/jieba_based/add_word_gpt.txt', 'a', encoding='utf-8').writelines(f'{d.__str__()}\n')
+
         return {"message": "keyword extraction", "data": data}
 
 
@@ -153,8 +165,34 @@ def keyword_extraction(s: str = '', topK: int = 10):
 
     return {"message": "keyword extraction", "data": extracted_keywords[:topK]}
 
+
+@app.post("/word/chatgpt", tags=["Add words by ChatGPT"])
+def add_chatgpt_word():
+    global composer, jieba_chatgpt
+    f = open(f'{ROOT_DIR}/jieba_based/add_word_gpt.txt', mode='r+', encoding='utf-8')
+    print(f)
+    data = f.read()
+    if len(data) == 0:
+        print('no sentence input')
+    else:
+        data = data.split('\n')
+        f.seek(0, 0)  # Move the cursor to the beginning of the file
+        f.truncate()  # clean file
+        words = []
+        for d in data[:-1]:
+            d = d.split('], [')
+            s_clean = re.sub(r"[^\w\s]", "", d[0])
+            cut_text = d[1].split(', ')
+            words = jieba_chatgpt.find_new_words(s_clean, cut_text)
+            [f.write(f'{w}\n') for w in words]
+        words = list(set(words))
+        composer.add_words(words)
+        f.close()
+        return {"message": "Get chatGPT keyword", "data": data}
+
+
 @app.post("/word/add", tags=["Add words"])
-def add_word(s: str='', s_join: str=None, sep: str=','):
+def add_word(s: str = '', s_join: str = None, sep: str = ','):
     if s != '':
         jieba.add_word(s)
         jieba.suggest_freq(s, tune=True)
@@ -166,8 +204,9 @@ def add_word(s: str='', s_join: str=None, sep: str=','):
             jieba.suggest_freq(s, tune=True)
         return {"message": "successfully add list of words", "data": s_list}
 
+
 @app.post("/word/stop", tags=["Stop words"])
-def stop_word(s: str='', s_join: str=None, sep: str=','):
+def stop_word(s: str = '', s_join: str = None, sep: str = ','):
     global stopwords
     if s != '':
         stopwords.append(s)
@@ -178,29 +217,35 @@ def stop_word(s: str='', s_join: str=None, sep: str=','):
             stopwords.append(s)
         return {"message": "successfully add list of words"}
 
+
 @app.get("/word/stop", tags=["Show stopwords"])
 def show_stopword():
     global stopwords
     return {"message": "show current stop words", "data": stopwords}
 
+
 @app.put("/word/init", tags=["Initialize config"])
-def init_config(filename_stopwords: str='stop_words.txt', filename_idf: str='idf_train_1000000.txt',
-                filename_dictionary: str='idf_POS_collect.txt', filename_userdict: str='user_dict.txt'):
+def init_config(filename_stopwords: str = 'stop_words.txt', filename_idf: str = 'idf_train_1000000.txt',
+                filename_dictionary: str = 'idf_POS_collect.txt', filename_userdict: str = 'user_dict.txt'):
     global stopwords, composer
+
     ## init dictionary
     composer.set_config(filename_stopwords=filename_stopwords, filename_idf=filename_idf,
-                   filename_dictionary=filename_dictionary, filename_userdict=filename_userdict)  ## add all user dictionary (add_words, google_trend, all_hashtag)
+                        filename_dictionary=filename_dictionary,
+                        filename_userdict=filename_userdict)  ## add all user dictionary (add_words, google_trend, all_hashtag)
     stopwords = composer.get_stopword_list()
     return {"message": "finish resetting config"}
 
+
 @app.put("/word/idf/init", tags=["Reset idf file for keyword_extraction"])
-def reset_keyword_idf(filename: str='idf_train_1000000.txt'):
+def reset_keyword_idf(filename: str = 'idf_train_1000000.txt'):
     global composer
     composer._load_kw_config(filename_idf=filename)
     return {"message": "finish resetting keyword config"}
 
+
 @app.put("/word/stop/init", tags=["Initialize stopwords"])
-def init_stopword(s_join: str=None, sep: str=','):
+def init_stopword(s_join: str = None, sep: str = ','):
     global stopwords, composer
     stopwords.clear()
     if s_join:
@@ -211,11 +256,13 @@ def init_stopword(s_join: str=None, sep: str=','):
 
 
 @app.put("/model/load", tags=["Load model"])
-def load_model(model_name: str='word2vec_zhonly_remove_one_v150m3w5.model'):
+def load_model(model_name: str = 'word2vec_zhonly_remove_one_v150m3w5.model'):
     global composer, ROOT_DIR
-    path_model = os.path.join(ROOT_DIR, 'gensim_compose', model_name) ##'./gensim_compose/word2vec_zhonly_remove_one_v300m10w5.model'
+    path_model = os.path.join(ROOT_DIR, 'gensim_compose',
+                              model_name)  ##'./gensim_compose/word2vec_zhonly_remove_one_v300m10w5.model'
     composer.load_model(path=path_model)
     return {"message": "finish loading word embedding model"}
+
 
 @app.put("/model/release", tags=["Release model"])
 def release_model():
@@ -223,8 +270,9 @@ def release_model():
     del composer.model
     return {"message": "finish releasing model"}
 
+
 @app.get("/similarity", tags=["Get similarity"])
-def cosine_similarity(s1: str=None, s2: str=None):
+def cosine_similarity(s1: str = None, s2: str = None):
     global composer
     ## load model if not loaded
     if not hasattr(composer, 'model'):
