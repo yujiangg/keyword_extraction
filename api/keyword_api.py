@@ -185,9 +185,15 @@ def add_chatgpt_word():
             cut_text = d[1].split(', ')
             words = jieba_chatgpt.find_new_words(s_clean, cut_text)
             [f.write(f'{w}\n') for w in words]
-        words = list(set(words))
-        composer.add_words(words)
-        f.close()
+        
+        f_txt_words = open(f'{ROOT_DIR}/jieba_based/add_words.txt', mode='r+', encoding='utf-8')
+        txt_words = f_txt_words.read().split('\n')
+        f_txt_words.seek(0, 0)  # Move the cursor to the beginning of the file
+        txt_words.extend(words)
+
+        txt_words = list(set(txt_words))
+        [f_txt_words.write(f'{w}\n') for w in txt_words]
+        
         return {"message": "Get chatGPT keyword", "data": data}
 
 
